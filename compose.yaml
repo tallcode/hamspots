@@ -1,0 +1,28 @@
+services:
+  # NATS 消息队列
+  nats:
+    image: nats:latest
+    container_name: nats-server
+    command: ["-js", "-sd", "/data"]
+    ports:
+      - "4222:4222" # 客户端连接
+      - "8222:8222" # 管理监控
+    volumes:
+      - nats_data:/data
+    restart: always
+
+  # MongoDB 数据库
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=dxc_db
+    volumes:
+      - mongo_data:/data/db
+    restart: always
+
+volumes:
+  nats_data:
+  mongo_data:

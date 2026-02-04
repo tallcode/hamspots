@@ -1,0 +1,27 @@
+{
+  "name": "dxsummit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "pm2 start ecosystem.config.cjs",
+    "stop": "pm2 stop dxsummit",
+    "restart": "pm2 restart dxsummit",
+    "logs": "pm2 logs dxsummit",
+    "monit": "pm2 monit",
+    "status": "pm2 status",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.28.2",
+  "dependencies": {
+    "@hono/node-server": "^1.19.9",
+    "hono": "^4.11.7"
+  },
+  "devDependencies": {
+    "pm2": "^6.0.14" 
+  }
+}

@@ -1,0 +1,39 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+.npmrc
+.DS_Store
+dist
+coverage
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tailwind.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment variables files
+/server/**/.env*
+keys
+
+# Prettier config
+.prettierrc
+.prettierrc.json
+.prettierrc.js
+.prettierrc.yml
+.prettierrc.yaml
+.prettier.config.js

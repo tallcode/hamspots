@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DX Summit</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f7fb;
+        --card: #ffffff;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --border: #e5e7eb;
+        --accent: #2563eb;
+        --accent-weak: #dbeafe;
+        --row-hover: #f3f4f6;
+        --highlight: #dcfce7; /* Green-ish highlight */
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        background: var(--bg);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 32px auto 48px;
+        padding: 0 20px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+        padding: 0 4px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0;
+        letter-spacing: 0.2px;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #9ca3af;
+      }
+      .dot.live { background: #16a34a; box-shadow: 0 0 0 4px #dcfce7; }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      thead th {
+        text-align: left;
+        font-weight: 600;
+        background: #f9fafb;
+        color: #374151;
+        border-bottom: 1px solid var(--border);
+        padding: 12px 14px;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+      tbody td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      tbody tr {
+        transition: background-color 0.5s;
+      }
+      tbody tr:hover { background: var(--row-hover); }
+      
+      @keyframes flash-animation {
+        0% { background-color: var(--highlight); }
+        100% { background-color: transparent; }
+      }
+      .flash {
+        animation: flash-animation 2s ease-out;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--accent-weak);
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 12px;
+        letter-spacing: 0.2px;
+      }
+      .muted { color: var(--muted); }
+      .empty {
+        text-align: center;
+        padding: 40px 16px;
+        color: var(--muted);
+      }
+      .toolbar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+        padding: 0 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>DX Summit</h1>
+        <div class="status" id="status">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">连接中…</span>
+        </div>
+      </header>
+      <div class="toolbar">
+        <span>共 <strong id="count">0</strong> 条</span>
+        <span class="muted" id="lastUpdate">尚无数据</span>
+      </div>
+      <div class="card" style="margin-top: 12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Spotter</th>
+              <th>Freq.</th>
+              <th>DX</th>
+              <th>Time</th>
+              <th>Info</th>
+            </tr>
+          </thead>
+          <tbody id="spotsBody">
+            <tr><td class="empty" colspan="5">等待数据…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      const MAX_ROWS = 200;
+      const spotsBody = document.getElementById('spotsBody');
+      const countEl = document.getElementById('count');
+      const statusText = document.getElementById('statusText');
+      const statusDot = document.getElementById('statusDot');
+      const lastUpdate = document.getElementById('lastUpdate');
+
+      let rowCount = 0;
+
+      function setStatus(online) {
+        statusText.textContent = online ? '已连接' : '已断开';
+        statusDot.classList.toggle('live', online);
+      }
+
+      function formatTime(ts) {
+        if (!ts) return '-';
+        const d = new Date(ts);
+        if (Number.isNaN(d.getTime())) return String(ts);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())} ${d.toLocaleString('en-US', { month: 'short' })}`;
+      }
+
+      function safeText(value) {
+        if (value === null || value === undefined) return '';
+        return String(value);
+      }
+
+      function addRow(spot, { flash = true } = {}) {
+        if (rowCount === 0) {
+          spotsBody.innerHTML = '';
+        }
+
+        const tr = document.createElement('tr');
+        // Add flash class for animation
+        if (flash) tr.classList.add('flash');
+        
+        tr.innerHTML = `
+          <td>${safeText(spot.de)}</td>
+          <td><span class="badge">${safeText(spot.freq)}</span></td>
+          <td><strong>${safeText(spot.dx)}</strong></td>
+          <td class="muted">${formatTime(spot.timestamp)}</td>
+          <td>${safeText(spot.comment)}</td>
+        `;
+        spotsBody.prepend(tr);
+        rowCount += 1;
+        if (rowCount > MAX_ROWS) {
+          spotsBody.removeChild(spotsBody.lastElementChild);
+          rowCount -= 1;
+        }
+        countEl.textContent = String(rowCount);
+        lastUpdate.textContent = `最近更新 ${new Date().toLocaleTimeString()}`;
+      }
+
+      async function loadHistory() {
+        try {
+          const res = await fetch('/api/spots');
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const payload = await res.json();
+          const list = Array.isArray(payload.data) ? payload.data : [];
+          list.forEach((spot) => addRow(spot, { flash: false }));
+        } catch (e) {
+          console.error('Failed to load history', e);
+        }
+      }
+
+      async function start() {
+        await loadHistory();
+        const es = new EventSource('/sse/spots');
+        es.addEventListener('open', () => setStatus(true));
+        es.addEventListener('error', () => setStatus(false));
+        es.addEventListener('new-spot', (evt) => {
+          try {
+            const spot = JSON.parse(evt.data);
+            addRow(spot);
+          } catch (e) {
+            console.error('Invalid spot data', e, evt.data);
+          }
+        });
+      }
+
+      start();
+    </script>
+  </body>
+</html>
