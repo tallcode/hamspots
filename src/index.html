@@ -100,7 +100,6 @@
       .flash {
         animation: flash-animation 2s ease-out;
       }
-
       .badge {
         display: inline-flex;
         align-items: center;
@@ -109,9 +108,20 @@
         background: var(--accent-weak);
         color: var(--accent);
         font-weight: 600;
-        font-size: 12px;
+        font-size: 11px;
         letter-spacing: 0.2px;
+        margin-left: 4px;
       }
+      .badge.HF { background: #dbeafe; color: #1e40af; }
+      .badge.VHF { background: #fef3c7; color: #92400e; }
+      .badge.UHF { background: #fce7f3; color: #9f1239; }
+      .badge.SHF { background: #f3e8ff; color: #6b21a8; }
+      .badge.LF { background: #e0e7ff; color: #3730a3; }
+      .badge.WARC { background: #fef9c3; color: #854d0e; }
+      .badge.QRP { background: #dcfce7; color: #166534; }
+      .badge.Mobile { background: #ffedd5; color: #9a3412; }
+      .badge.Portable { background: #ddd6fe; color: #5b21b6; }
+      .badge.Beacon { background: #fecaca; color: #991b1b; }
       .muted { color: var(--muted); }
       .empty {
         text-align: center;
@@ -159,7 +169,7 @@
       </div>
     </div>
 
-    <script>
+    <script type="module">
       const MAX_ROWS = 200;
       const spotsBody = document.getElementById('spotsBody');
       const countEl = document.getElementById('count');
@@ -184,7 +194,13 @@
 
       function safeText(value) {
         if (value === null || value === undefined) return '';
-        return String(value);
+        // HTML转义，将标签转换为可见文本而不是移除
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
       }
 
       function addRow(spot, { flash = true } = {}) {
@@ -192,15 +208,19 @@
           spotsBody.innerHTML = '';
         }
 
+        const marks = spot.marks || { freqMarks: [], dxMarks: [] };
+        const freqBadges = marks.freqMarks.map(m => `<span class="badge ${safeText(m)}">${safeText(m)}</span>`).join('');
+        const dxBadges = marks.dxMarks.map(m => `<span class="badge ${safeText(m)}">${safeText(m)}</span>`).join('');
+
         const tr = document.createElement('tr');
         // Add flash class for animation
         if (flash) tr.classList.add('flash');
         
         tr.innerHTML = `
           <td>${safeText(spot.de)}</td>
-          <td><span class="badge">${safeText(spot.freq)}</span></td>
-          <td><strong>${safeText(spot.dx)}</strong></td>
-          <td class="muted">${formatTime(spot.timestamp)}</td>
+          <td>${safeText(spot.freq)}${freqBadges}</td>
+          <td><strong>${safeText(spot.dx)}</strong>${dxBadges}</td>
+          <td class="muted">${safeText(spot.timeDisplay || spot.time)}</td>
           <td>${safeText(spot.comment)}</td>
         `;
         spotsBody.prepend(tr);
@@ -210,7 +230,7 @@
           rowCount -= 1;
         }
         countEl.textContent = String(rowCount);
-        lastUpdate.textContent = `最近更新 ${new Date().toLocaleTimeString()}`;
+        lastUpdate.textContent = `最近更新 ${new Date().toISOString().split('.')[0].replace('T', ' ')}(UTC)`;
       }
 
       async function loadHistory() {
@@ -219,7 +239,8 @@
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const payload = await res.json();
           const list = Array.isArray(payload.data) ? payload.data : [];
-          list.forEach((spot) => addRow(spot, { flash: false }));
+          // Reverse to maintain descending order when using prepend
+          list.reverse().forEach((spot) => addRow(spot, { flash: false }));
         } catch (e) {
           console.error('Failed to load history', e);
         }

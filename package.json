@@ -1,27 +1,32 @@
 {
   "name": "dxsummit",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
   "type": "module",
-  "scripts": {
-    "start": "pm2 start ecosystem.config.cjs",
-    "stop": "pm2 stop dxsummit",
-    "restart": "pm2 restart dxsummit",
-    "logs": "pm2 logs dxsummit",
-    "monit": "pm2 monit",
-    "status": "pm2 status",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.28.2",
+  "description": "",
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.28.2",
+  "keywords": [],
+  "main": "index.js",
+  "scripts": {
+    "start": "pm2 start ecosystem.config.cjs",
+    "stop": "pm2 stop ecosystem.config.cjs",
+    "restart": "pm2 restart ecosystem.config.cjs",
+    "logs": "pm2 logs",
+    "monit": "pm2 monit",
+    "status": "pm2 status",
+    "clean:pm2": "pm2 delete all && pm2 flush"
+  },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
-    "hono": "^4.11.7"
+    "dayjs": "^1.11.19",
+    "hono": "^4.11.7",
+    "mongodb": "^7.1.0",
+    "nats": "^2.29.3",
+    "pm2": "^6.0.14"
   },
   "devDependencies": {
-    "pm2": "^6.0.14" 
+    "@antfu/eslint-config": "^7.0.1",
+    "eslint": "^9.39.2"
   }
 }
