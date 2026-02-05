@@ -120,27 +120,56 @@ function dxMark(dx) {
   return marks
 }
 
+const DIGI_FREQS = [
+  // FT8 常用频率
+  1840,
+  3573,
+  7074,
+  10136,
+  14074,
+  18110,
+  21074,
+  24915,
+  28074,
+  50313,
+  50323,
+  144174,
+  // FT4 常用频率
+  3568,
+  3575,
+  7047,
+  10140,
+  14080,
+  18104,
+  21140,
+  24919,
+  28180,
+  50318,
+  144170,
+]
+
 function modeMark(spot) {
   // 模式标记（根据 comment 字段）
   // DIGI PH CW 三类
-  const marks = []
-  if (!spot.comment)
-    return marks
-
-  const comment = spot.comment.toUpperCase()
+  const comment = spot.comment.toUpperCase() || ''
 
   // 使用词边界匹配，确保是完整的单词
   if (/\bFT8\b/.test(comment) || /\bFT4\b/.test(comment) || /\bJT65\b/.test(comment) || /\bRTTY\b/.test(comment) || /\bPSK31\b/.test(comment)) {
-    marks.push('DIGI')
+    return ['DIGI']
   }
   if (/\bCW\b/.test(comment)) {
-    marks.push('CW')
+    return ['CW']
   }
   if (/\bPHONE\b/.test(comment) || /\bSSB\b/.test(comment) || /\bFM\b/.test(comment)) {
-    marks.push('PH')
+    return ['PH']
   }
 
-  return marks
+  const freq = Number.parseFloat(spot.freq)
+  if (DIGI_FREQS.some(f => (f - freq) <= 3)) {
+    return ['DIGI']
+  }
+
+  return []
 }
 
 export function markSpot(spot) {
