@@ -21,25 +21,25 @@ function freqMark(freq) {
     marks.push('HF', '3.5MHz')
   }
   else if (freqKHz >= 5000 && freqKHz < 5500) {
-    marks.push('HF', '5MHz', 'WARC')
+    marks.push('HF', 'WARC', '5MHz')
   }
   else if (freqKHz >= 7000 && freqKHz < 7300) {
     marks.push('HF', '7MHz')
   }
   else if (freqKHz >= 10100 && freqKHz < 10150) {
-    marks.push('HF', '10MHz', 'WARC')
+    marks.push('HF', 'WARC', '10MHz')
   }
   else if (freqKHz >= 14000 && freqKHz < 14350) {
     marks.push('HF', '14MHz')
   }
   else if (freqKHz >= 18068 && freqKHz < 18168) {
-    marks.push('HF', '18MHz', 'WARC')
+    marks.push('HF', 'WARC', '18MHz')
   }
   else if (freqKHz >= 21000 && freqKHz < 21450) {
     marks.push('HF', '21MHz')
   }
   else if (freqKHz >= 24890 && freqKHz < 24990) {
-    marks.push('HF', '24MHz', 'WARC')
+    marks.push('HF', 'WARC', '24MHz')
   }
   else if (freqKHz >= 28000 && freqKHz < 29700) {
     marks.push('HF', '28MHz')
@@ -120,9 +120,33 @@ function dxMark(dx) {
   return marks
 }
 
+function modeMark(spot) {
+  // 模式标记（根据 comment 字段）
+  // DIGI PH CW 三类
+  const marks = []
+  if (!spot.comment)
+    return marks
+
+  const comment = spot.comment.toUpperCase()
+
+  // 使用词边界匹配，确保是完整的单词
+  if (/\bFT8\b/.test(comment) || /\bFT4\b/.test(comment) || /\bJT65\b/.test(comment) || /\bRTTY\b/.test(comment) || /\bPSK31\b/.test(comment)) {
+    marks.push('DIGI')
+  }
+  if (/\bCW\b/.test(comment)) {
+    marks.push('CW')
+  }
+  if (/\bPHONE\b/.test(comment) || /\bSSB\b/.test(comment) || /\bFM\b/.test(comment)) {
+    marks.push('PH')
+  }
+
+  return marks
+}
+
 export function markSpot(spot) {
   return {
     freqMarks: freqMark(spot.freq),
     dxMarks: dxMark(spot.dx),
+    modeMarks: modeMark(spot),
   }
 }

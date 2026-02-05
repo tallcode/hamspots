@@ -122,6 +122,9 @@
       .badge.Mobile { background: #ffedd5; color: #9a3412; }
       .badge.Portable { background: #ddd6fe; color: #5b21b6; }
       .badge.Beacon { background: #fecaca; color: #991b1b; }
+      .badge.DIGI { background: #cffafe; color: #155e75; }
+      .badge.CW { background: #d1fae5; color: #065f46; }
+      .badge.PH { background: #fed7aa; color: #9a3412; }
       .muted { color: var(--muted); }
       .empty {
         text-align: center;
@@ -208,9 +211,10 @@
           spotsBody.innerHTML = '';
         }
 
-        const marks = spot.marks || { freqMarks: [], dxMarks: [] };
-        const freqBadges = marks.freqMarks.map(m => `<span class="badge ${safeText(m)}">${safeText(m)}</span>`).join('');
-        const dxBadges = marks.dxMarks.map(m => `<span class="badge ${safeText(m)}">${safeText(m)}</span>`).join('');
+        const marks = spot.marks || {};
+        const freqBadges = (marks.freqMarks||[]).map(m => `<span class="badge ${safeText(m)}">${safeText(m)}</span>`).join('');
+        const dxBadges = (marks.dxMarks||[]).map(m => `<span class="badge ${safeText(m)}">${safeText(m)}</span>`).join('');
+        const modeBadges = (marks.modeMarks||[]).map(m => `<span class="badge ${safeText(m)}">${safeText(m)}</span>`).join('');
 
         const tr = document.createElement('tr');
         // Add flash class for animation
@@ -218,7 +222,7 @@
         
         tr.innerHTML = `
           <td>${safeText(spot.de)}</td>
-          <td>${safeText(spot.freq)}${freqBadges}</td>
+          <td>${safeText(spot.freq)}${modeBadges}${freqBadges}</td>
           <td><strong>${safeText(spot.dx)}</strong>${dxBadges}</td>
           <td class="muted">${safeText(spot.timeDisplay || spot.time)}</td>
           <td>${safeText(spot.comment)}</td>
