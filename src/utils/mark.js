@@ -165,7 +165,7 @@ function modeMark(spot) {
   }
 
   const freq = Number.parseFloat(spot.freq)
-  if (DIGI_FREQS.some(f => (freq - f) <= 3)) {
+  if (DIGI_FREQS.some(f => (freq >= f) && (freq - f) <= 3)) {
     return ['DIGI']
   }
 
