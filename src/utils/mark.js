@@ -54,6 +54,10 @@ function dxMark(dx) {
 const DIGI_REGEX = /\b(?:FT8|FT4|JT65|RTTY|PSK31)\b/i
 const CW_REGEX = /\bCW\b/i
 const PH_REGEX = /\b(?:PHONE|SSB|USB|LSB|FM)\b/i
+const PH_RST_REGEX = /\b[1-5][1-9]\+?\b/
+const DIGI_RST_REGEX = /\bR?[+-]\d{1,2}(?:db)?\b/i
+const CW_RST_REGEX = /\b[1-5][1-9][1-9]\b/
+const NOT_CW_COMMENT_REGEX = /\b(?:SS|A)TV\b/i
 
 function modeMark(spot) {
   // 模式标记（根据 comment 字段）
@@ -77,6 +81,15 @@ function modeMark(spot) {
     const modes = plan.slice(2)
     if (modes.length === 1) {
       return modes
+    }
+    if (modes.includes('DIGI') && (DIGI_RST_REGEX.test(comment))) {
+      return ['DIGI']
+    }
+    if (modes.includes('PH') && (PH_RST_REGEX.test(comment))) {
+      return ['PH']
+    }
+    if (modes.includes('CW') && (CW_RST_REGEX.test(comment)) && !NOT_CW_COMMENT_REGEX.test(comment)) {
+      return ['CW']
     }
   }
   return []
