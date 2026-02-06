@@ -164,10 +164,11 @@
               <th>DX</th>
               <th>Time</th>
               <th>Info</th>
+              <th>DXCC</th>
             </tr>
           </thead>
           <tbody id="spotsBody">
-            <tr><td class="empty" colspan="5">等待数据…</td></tr>
+            <tr><td class="empty" colspan="6">等待数据…</td></tr>
           </tbody>
         </table>
       </div>
@@ -228,6 +229,7 @@
           <td><strong>${safeText(spot.dx)}</strong>${dxccBadge}${dxBadges}</td>
           <td class="muted">${safeText(spot.timeDisplay || spot.time)}</td>
           <td>${safeText(spot.comment)}</td>
+          <td>${safeText(spot.dxcc ? spot.dxcc.name : '-')}</td>
         `;
         spotsBody.prepend(tr);
         rowCount += 1;
