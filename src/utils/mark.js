@@ -55,7 +55,7 @@ const DIGI_REGEX = /\b(?:FT8|FT4|JT65|RTTY|PSK31)\b/i
 const CW_REGEX = /\bCW\b/i
 const PH_REGEX = /\b(?:PHONE|SSB|USB|LSB|FM)\b/i
 const PH_RST_REGEX = /\b[1-5][1-9]\+?\b/
-const DIGI_RST_REGEX = /\bR?[+-]\d{1,2}(?:db)?\b/i
+const DIGI_RST_REGEX = /\bR?[+-][0-3]\d(?:db)?\b/i
 const CW_RST_REGEX = /\b[1-5][1-9][1-9]\b/
 const NOT_CW_COMMENT_REGEX = /\b(?:SS|A)TV\b/i
 
@@ -79,6 +79,7 @@ function modeMark(spot) {
   const plan = BAND_PLAN.find(([min, max]) => freq >= min && freq < max)
   if (plan && plan.length > 2) {
     const modes = plan.slice(2)
+    console.log(spot.dx, spot.freq, modes)
     if (modes.length === 1) {
       return modes
     }
