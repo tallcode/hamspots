@@ -11,16 +11,24 @@ function loadCtyDat(filePath) {
 
   const prefixMap = new Map()
   const exactMap = new Map()
-
   let currentEntity = null
+
+  /**
+   * 正则解析说明：
+   * 1. ^(=?[^(\[< ]+) : 匹配前缀（可选 = 号开头），直到遇到 ( [ < 或空格
+   * 2. (?:\(([^)]+)\))? : 捕获 ITU 分区例外，如 (23)
+   * 3. (?:\[([^\]]+)\])? : 捕获 CQ 分区例外，如 [43]
+   * 4. (?:<([^>]+)>)?    : 捕获经纬度例外，如 <31.2/121.4>
+   */
+  const prefixRegex = /^([^([< ]+)(?:\(([^)]+)\))?(?:\[([^\]]+)\])?(?:<([^>]+)>)?/
 
   for (let line of lines) {
     line = line.trim()
     if (!line)
       continue
 
+    // 处理 Header 行 (以冒号分隔并以冒号结尾)
     if (line.includes(':') && line.endsWith(':')) {
-      // 解析 Header 行
       const parts = line.split(':')
       currentEntity = {
         name: parts[0].trim(),
@@ -33,8 +41,8 @@ function loadCtyDat(filePath) {
         primary: parts[7].trim(),
       }
     }
+    // 处理前缀行
     else if (currentEntity) {
-      // 解析前缀行 (处理以逗号分隔，分号结尾的情况)
       const cleanLine = line.replace(';', '')
       const prefixes = cleanLine.split(',')
 
@@ -43,29 +51,52 @@ function loadCtyDat(filePath) {
         if (!p)
           continue
 
-        // 移除占位符如 [24] 或 (30.5) 等辅助信息，保留纯前缀
-        const rawPrefix = p.replace(/\[.*?\]|\(.*?\)/g, '')
+        const match = p.match(prefixRegex)
+        if (match) {
+          const rawPrefix = match[1].toUpperCase()
+          const overrideItu = match[2]
+          const overrideCq = match[3]
+          const overrideCoords = match[4]
 
-        if (rawPrefix.startsWith('=')) {
-          // 精确匹配
-          exactMap.set(rawPrefix.substring(1), currentEntity)
-        }
-        else {
-          // 前缀匹配
-          prefixMap.set(rawPrefix, currentEntity)
+          // 基础数据对象
+          const data = { ...currentEntity }
+
+          // 应用例外覆盖
+          if (overrideItu)
+            data.itu = overrideItu
+          if (overrideCq)
+            data.cq = overrideCq
+          if (overrideCoords) {
+            const [lat, lng] = overrideCoords.split('/')
+            data.lat = Number.parseFloat(lat)
+            data.lng = Number.parseFloat(lng)
+          }
+
+          // 分配到对应的 Map
+          if (rawPrefix.startsWith('=')) {
+            exactMap.set(rawPrefix.substring(1), data)
+          }
+          else {
+            prefixMap.set(rawPrefix, data)
+          }
         }
       }
     }
   }
+
   return { prefixMap, exactMap }
 }
 
 const { prefixMap, exactMap } = loadCtyDat('../data/cty.dat')
 
 const ignoredSuffixes = new Set(['P', 'M', 'AM', 'MM', 'QRP', 'LH', 'IOTA', 'B', 'R'])
-function lookup(target) {
+function lookup(target, percise = false) {
   if (exactMap.has(target))
     return exactMap.get(target)
+  // 精确匹配模式下不进行前缀查找
+  if (percise) {
+    return null
+  }
 
   for (let len = target.length; len > 0; len--) {
     const prefix = target.substring(0, len)
@@ -79,19 +110,22 @@ export function getDXCC(callsign) {
   if (!callsign)
     return null
   const call = callsign.toUpperCase()
+  // 先精确匹配整体呼号 (如 BY1AA/9)
+  const perciseResult = lookup(call, true)
+  if (perciseResult) {
+    return perciseResult
+  }
   const parts = call.split('/')
 
   // 1. 预处理：剔除已知无意义后缀 (从右往左)
   while (parts.length > 1 && ignoredSuffixes.has(parts[parts.length - 1])) {
     parts.pop()
   }
-
   // 2. 只有一部分，直接查
   if (parts.length === 1) {
     return lookup(parts[0])
   }
-
-  // 3. 多部分处理 (核心改进)
+  // 3. 多部分处理
   // 过滤掉纯数字（如 /7, /0），这些通常是地区号，不参与 DXCC 归属判定
   const filteredParts = parts.filter(p => !/^\d$/.test(p))
   if (filteredParts.length === 0) {
