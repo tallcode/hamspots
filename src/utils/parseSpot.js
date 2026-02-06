@@ -24,7 +24,7 @@ export function parseSpot(line) {
     const spotTime = dayjs.utc().hour(hours).minute(minutes).second(0).millisecond(0)
 
     return {
-      de: match[1],
+      de: match[1].replace(/-[\d#@]*$/, ''),
       freq: match[2],
       dx: match[3],
       comment: match[4].trim(),
