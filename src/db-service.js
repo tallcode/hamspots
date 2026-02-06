@@ -1,6 +1,7 @@
 import process from 'node:process'
 import { MongoClient } from 'mongodb'
 import { connect as natsConnect, StringCodec } from 'nats'
+import { getDXCC } from './utils/cty.js'
 import { markSpot } from './utils/mark.js'
 
 const NATS_URL = process.env.NATS_URL || 'nats://localhost:4222'
@@ -61,7 +62,8 @@ async function start() {
 
           if (!existing) {
             const marks = markSpot(spot)
-            const _spot = { ...spot, marks }
+            const dxcc = getDXCC(spot.dx)
+            const _spot = { ...spot, marks, dxcc }
             await collection.insertOne(_spot)
             nc.publish('spots.clean', sc.encode(JSON.stringify(_spot)))
             console.log(`spot: ${_spot.de} ${_spot.freq} ${_spot.dx}`)
