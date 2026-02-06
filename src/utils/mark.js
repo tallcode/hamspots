@@ -148,19 +148,23 @@ const DIGI_FREQS = [
   144170,
 ]
 
+const DIGI_REGEX = /\b(?:FT8|FT4|JT65|RTTY|PSK31)\b/i
+const CW_REGEX = /\bCW\b/i
+const PH_REGEX = /\b(?:PHONE|SSB|USB|LSB|FM)\b/i
+
 function modeMark(spot) {
   // 模式标记（根据 comment 字段）
   // DIGI PH CW 三类
   const comment = spot.comment.toUpperCase() || ''
 
   // 使用词边界匹配，确保是完整的单词
-  if (/\bFT8\b/.test(comment) || /\bFT4\b/.test(comment) || /\bJT65\b/.test(comment) || /\bRTTY\b/.test(comment) || /\bPSK31\b/.test(comment)) {
+  if (DIGI_REGEX.test(comment)) {
     return ['DIGI']
   }
-  if (/\bCW\b/.test(comment)) {
+  if (CW_REGEX.test(comment)) {
     return ['CW']
   }
-  if (/\bPHONE\b/.test(comment) || /\bSSB\b/.test(comment) || /\bFM\b/.test(comment)) {
+  if (PH_REGEX.test(comment)) {
     return ['PH']
   }
 
