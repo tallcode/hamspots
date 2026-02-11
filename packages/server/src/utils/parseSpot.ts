@@ -48,12 +48,3 @@ export function parseSpot(line: string): Spot | null {
 
   return null
 }
-
-/**
- * 格式化时间戳为 HH:mm:ss 格式
- * @param timestamp - UTC时间戳（毫秒）
- * @returns HH:mm:ss 格式的时间字符串
- */
-export function formatSpotTime(timestamp: number): string {
-  return dayjs(timestamp).utc().format('HH:mm:ss')
-}

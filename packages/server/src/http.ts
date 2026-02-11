@@ -7,7 +7,7 @@ import { logger } from 'hono/logger'
 import { streamSSE } from 'hono/streaming'
 import { MongoClient, type Collection, type WithId, type Document } from 'mongodb'
 import { connect as natsConnect, StringCodec } from 'nats'
-import { formatSpotTime, type Spot } from './utils/parseSpot.js'
+import type { Spot } from './utils/parseSpot.js'
 
 const NATS_URL = process.env.NATS_URL || 'nats://localhost:4222'
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017'
@@ -50,42 +50,48 @@ watchSpots()
 
 app.use('*', logger())
 
-// 格式化spot对象，添加timeDisplay字段
-function formatSpot(spot: WithId<Spot> | Spot): Spot & { timeDisplay?: string; _id?: string } {
-  const result: Spot & { timeDisplay?: string; _id?: string } = { ...spot, _id: undefined }
+// 格式化spot对象
+function formatSpot(spot: WithId<Spot> | Spot): Spot & { _id?: string } {
+  const result: Spot & { _id?: string } = { ...spot, _id: undefined }
   if ('_id' in spot && spot._id) {
     result._id = spot._id.toString()
-  }
-  if (spot.time) {
-    result.timeDisplay = formatSpotTime(spot.time)
   }
   return result
 }
 
-// API to get historical spots
-app.get('/api/spots', async (c) => {
-  if (!collection) {
-    return c.json({ error: 'Not connected to database' }, 503)
-  }
-  const spots = await collection.find().sort({ createdAt: -1 }).limit(100).toArray()
-  const formattedSpots = spots.map(formatSpot)
-  return c.json({ data: formattedSpots })
-})
-
 // SSE route for new spots
 app.get('/sse/spots', async (c) => {
   return streamSSE(c, async (stream) => {
-    // 立即发送连接确认消息，确保客户端能立刻知道连接已建立
+    // 立即发送连接确认消息，确保客户端能立刻知道连接已建立，并发送服务器当前UTC时间
     await stream.writeSSE({
       event: 'connected',
-      data: 'keep-alive',
+      data: JSON.stringify({ serverTime: Date.now() }),
     })
+
+    // 逐条发送历史记录
+    if (collection) {
+      try {
+        const spots = await collection.find().sort({ createdAt: -1 }).limit(100).toArray()
+        // 倒序发送，让前端unshift后最新的在最上面
+        spots.reverse()
+        for (const spot of spots) {
+          const formattedSpot = formatSpot(spot)
+          await stream.writeSSE({
+            event: 'spot',
+            data: JSON.stringify(formattedSpot),
+            id: spot._id?.toString(),
+          })
+        }
+      } catch (err) {
+        console.error('Failed to load history for SSE', err)
+      }
+    }
 
     const listener = (spot: WithId<Spot>) => {
       const formattedSpot = formatSpot(spot)
       stream.writeSSE({
         data: JSON.stringify(formattedSpot),
-        event: 'new-spot',
+        event: 'spot',
         id: spot._id?.toString(),
       })
     }
