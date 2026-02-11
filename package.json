@@ -12,8 +12,16 @@
   "scripts": {
     "dev": "pnpm -r dev",
     "build": "pnpm -r build",
-    "start": "pnpm -r start",
-    "lint": "pnpm -r lint"
+    "start": "pnpm -r build && pnpm -r start",
+    "stop": "pnpm -r stop",
+    "restart": "pnpm stop && pnpm start",
+    "logs": "pm2 logs",
+    "monit": "pm2 monit",
+    "status": "pm2 status",
+    "clean": "pm2 delete all && pm2 flush"
+  },
+  "dependencies": {
+    "pm2": "^6.0.14"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^7.0.1",

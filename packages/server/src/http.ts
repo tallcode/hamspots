@@ -22,10 +22,6 @@ const app = new Hono()
 const spotEvents = new EventEmitter()
 spotEvents.setMaxListeners(100)
 
-interface SpotWithId extends Spot {
-  _id: string
-}
-
 // Connect to MongoDB
 let collection: Collection<Spot> | undefined
 const mongoClient = new MongoClient(MONGO_URL)

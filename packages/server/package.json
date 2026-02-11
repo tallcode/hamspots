@@ -3,15 +3,10 @@
   "type": "module",
   "version": "1.0.0",
   "scripts": {
-    "start": "pm2 start ecosystem.config.cjs",
-    "dev": "pnpm run build && pm2 start --no-daemon ecosystem.config.cjs",
     "build": "tsc && cp -r src/data dist/",
-    "stop": "pm2 stop ecosystem.config.cjs",
-    "restart": "pm2 restart ecosystem.config.cjs",
-    "logs": "pm2 logs",
-    "monit": "pm2 monit",
-    "status": "pm2 status",
-    "clean:pm2": "pm2 delete all && pm2 flush"
+    "dev": "pnpm run build && pm2 start --no-daemon ecosystem.config.cjs",
+    "start": "pm2 start ecosystem.config.cjs",
+    "stop": "pm2 stop ecosystem.config.cjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
