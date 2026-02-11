@@ -8,6 +8,10 @@ import { streamSSE } from 'hono/streaming'
 import { MongoClient, type Collection, type WithId, type Document } from 'mongodb'
 import { connect as natsConnect, StringCodec } from 'nats'
 import type { Spot } from './utils/parseSpot.js'
+import { markSpot } from './utils/mark.js'
+import { matchFilter, parseFilterParam, buildMongoQuery } from './utils/filter.js'
+import { getAllDXCCEntities } from './utils/cty.js'
+import { FREQ_RANGES } from './utils/freq.js'
 
 const NATS_URL = process.env.NATS_URL || 'nats://localhost:4222'
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017'
@@ -51,16 +55,24 @@ watchSpots()
 app.use('*', logger())
 
 // 格式化spot对象
-function formatSpot(spot: WithId<Spot> | Spot): Spot & { _id?: string } {
-  const result: Spot & { _id?: string } = { ...spot, _id: undefined }
+function formatSpot(spot: WithId<Spot> | Spot): Spot & { _id?: string, marks?: ReturnType<typeof markSpot> } {
+  const result: Spot & { _id?: string, marks?: ReturnType<typeof markSpot> } = { ...spot, _id: undefined }
   if ('_id' in spot && spot._id) {
     result._id = spot._id.toString()
+  }
+  // 确保有marks字段
+  if (!result.marks) {
+    result.marks = markSpot(result as Spot)
   }
   return result
 }
 
 // SSE route for new spots
 app.get('/sse/spots', async (c) => {
+  // 解析过滤器参数
+  const filterParam = c.req.query('filter')
+  const filter = parseFilterParam(filterParam)
+  
   return streamSSE(c, async (stream) => {
     // 立即发送连接确认消息，确保客户端能立刻知道连接已建立，并发送服务器当前UTC时间
     await stream.writeSSE({
@@ -68,10 +80,11 @@ app.get('/sse/spots', async (c) => {
       data: JSON.stringify({ serverTime: Date.now() }),
     })
 
-    // 逐条发送历史记录
+    // 逐条发送历史记录，使用过滤器构建MongoDB查询
     if (collection) {
       try {
-        const spots = await collection.find().sort({ createdAt: -1 }).limit(100).toArray()
+        const mongoQuery = buildMongoQuery(filter)
+        const spots = await collection.find(mongoQuery).sort({ createdAt: -1 }).limit(100).toArray()
         // 倒序发送，让前端unshift后最新的在最上面
         spots.reverse()
         for (const spot of spots) {
@@ -89,11 +102,14 @@ app.get('/sse/spots', async (c) => {
 
     const listener = (spot: WithId<Spot>) => {
       const formattedSpot = formatSpot(spot)
-      stream.writeSSE({
-        data: JSON.stringify(formattedSpot),
-        event: 'spot',
-        id: spot._id?.toString(),
-      })
+      // 应用过滤器
+      if (matchFilter(formattedSpot, filter)) {
+        stream.writeSSE({
+          data: JSON.stringify(formattedSpot),
+          event: 'spot',
+          id: spot._id?.toString(),
+        })
+      }
     }
 
     spotEvents.on('broadcast', listener)
@@ -107,6 +123,34 @@ app.get('/sse/spots', async (c) => {
       await stream.sleep(30000)
       await stream.writeSSE({ event: 'ping', data: 'keep-alive' })
     }
+  })
+})
+
+// API: 获取过滤器选项
+app.get('/api/filter-options', (c) => {
+  // 从 FREQ_RANGES 中提取所有唯一的具体频率标记（跳过 HF/VHF/UHF/SHF/LF/WARC）
+  const bandTypes = new Set(['HF', 'VHF', 'UHF', 'SHF', 'LF', 'WARC'])
+  const specificFreqs = new Set<string>()
+  
+  for (const range of FREQ_RANGES) {
+    const [, , ...marks] = range as [number, number, ...string[]]
+    for (const mark of marks) {
+      if (!bandTypes.has(mark)) {
+        specificFreqs.add(mark)
+      }
+    }
+  }
+  
+  // 获取所有 DXCC 实体
+  const dxccEntities = getAllDXCCEntities()
+  
+  return c.json({
+    specificFreqs: Array.from(specificFreqs).sort(),
+    dxccEntities: dxccEntities.map(e => ({
+      name: e.name,
+      primary: e.primary,
+      continent: e.continent
+    }))
   })
 })
 

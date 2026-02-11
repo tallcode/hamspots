@@ -4,6 +4,7 @@ import { useIntervalFn, useTimeoutFn } from '@vueuse/core'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import 'dayjs/locale/zh-cn'
+import FilterPanel from './components/FilterPanel.vue'
 
 dayjs.extend(utc)
 dayjs.locale('zh-cn')
@@ -27,6 +28,28 @@ interface Spot {
   isFlash?: boolean
 }
 
+interface FilterConfig {
+  freqMarks?: {
+    include?: string[]
+    exclude?: string[]
+  }
+  specificFreq?: {
+    include?: string[]
+    exclude?: string[]
+  }
+  dxMarks?: {
+    include?: string[]
+    exclude?: string[]
+  }
+  modeMarks?: {
+    include?: string[]
+    exclude?: string[]
+  }
+  dxcc?: {
+    include?: string[]  // 只支持包含
+  }
+}
+
 const MAX_ROWS = 200
 const spots = ref<Spot[]>([])
 const connected = ref(false)
@@ -34,6 +57,25 @@ const lastUpdate = ref('尚无数据')
 const enableFlash = ref(false)
 const currentTime = ref(Date.now()) // 校准后的当前时间(服务器时间)
 let timeDiff = 0 // 服务器时间与本地时间的差值(毫秒)
+
+// 过滤器相关状态
+const filterDialog = ref<HTMLDialogElement | null>(null)
+const currentFilterConfig = ref<FilterConfig>({})
+
+// 检查是否有激活的过滤器
+function hasActiveFilter() {
+  return Object.keys(currentFilterConfig.value).length > 0
+}
+
+// 打开过滤器对话框
+function openFilter() {
+  filterDialog.value?.showModal()
+}
+
+// 关闭过滤器对话框
+function closeFilter() {
+  filterDialog.value?.close()
+}
 
 // 每30秒更新一次校准后的当前时间
 useIntervalFn(() => {
@@ -109,11 +151,31 @@ function getBadgeClass(type: string) {
 
 let es: EventSource | null = null
 
-onMounted(() => {
-  es = new EventSource('/sse/spots')
-  // es.addEventListener('open', () => {
-  //   console.log('EventSource opened')
-  // })
+// 创建SSE连接
+function connectSSE() {
+  // 关闭现有连接
+  if (es) {
+    es.close()
+    es = null
+  }
+  
+  // 清空现有spots
+  spots.value = []
+  connected.value = false
+  enableFlash.value = false
+  lastUpdate.value = '正在连接...'
+  
+  // 构建URL
+  let url = '/sse/spots'
+  const config = currentFilterConfig.value
+  if (Object.keys(config).length > 0) {
+    const encoded = btoa(JSON.stringify(config))
+    url += `?filter=${encodeURIComponent(encoded)}`
+  }
+  
+  // 创建新连接
+  es = new EventSource(url)
+  
   es.addEventListener('connected', (evt) => {
     connected.value = true
     // 接收服务器时间并计算时间差
@@ -134,11 +196,14 @@ onMounted(() => {
       enableFlash.value = true
     }, 5000)
   })
+  
   es.addEventListener('error', () => {
     connected.value = false
     enableFlash.value = false
+    lastUpdate.value = '连接已断开'
     console.error('EventSource error')
   })
+  
   es.addEventListener('spot', (evt) => {
     try {
       const spot = JSON.parse(evt.data)
@@ -147,6 +212,17 @@ onMounted(() => {
       console.error('Invalid spot data', e, evt.data)
     }
   })
+}
+
+// 应用过滤器（重新连接SSE）
+function applyFilter(config: FilterConfig) {
+  currentFilterConfig.value = config
+  connectSSE()
+  closeFilter()
+}
+
+onMounted(() => {
+  connectSSE()
 })
 </script>
 
@@ -155,14 +231,42 @@ onMounted(() => {
     <!-- Header -->
     <header class="flex items-center justify-between gap-4 mb-4 px-1">
       <h1 class="text-2xl font-semibold tracking-tight text-gray-900">DX Summit</h1>
-      <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs text-gray-600">
-        <span 
-          class="w-2 h-2 rounded-full transition-all" 
-          :class="connected ? 'bg-green-600 shadow-[0_0_0_4px_rgba(220,252,231,1)]' : 'bg-gray-400'"
-        ></span>
-        <span>{{ connected ? '已连接' : '已断开' }}</span>
+      <div class="flex items-center gap-3">
+        <!-- Filter Button -->
+        <button
+          @click="openFilter"
+          class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border rounded-full text-xs font-medium transition-all hover:bg-gray-50"
+          :class="hasActiveFilter() ? 'border-blue-500 text-blue-700' : 'border-gray-200 text-gray-600'"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          <span>过滤器</span>
+          <span v-if="hasActiveFilter()" class="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-blue-600 rounded-full">!</span>
+        </button>
+        
+        <!-- Connection Status -->
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs text-gray-600">
+          <span 
+            class="w-2 h-2 rounded-full transition-all" 
+            :class="connected ? 'bg-green-600 shadow-[0_0_0_4px_rgba(220,252,231,1)]' : 'bg-gray-400'"
+          ></span>
+          <span>{{ connected ? '已连接' : '已断开' }}</span>
+        </div>
       </div>
     </header>
+    
+    <!-- Filter Panel Dialog -->
+    <dialog 
+      ref="filterDialog"
+      class="max-w-4xl w-full rounded-xl p-0 backdrop:bg-black/50 m-auto"
+      @click.self="closeFilter"
+    >
+      <FilterPanel 
+        @apply="applyFilter"
+        @close="closeFilter"
+      />
+    </dialog>
     
     <!-- Toolbar -->
     <div class="flex gap-3 items-center text-xs text-gray-500 px-1 mb-3">
@@ -231,5 +335,4 @@ onMounted(() => {
     </div>
   </div>
 </template>
-
 
