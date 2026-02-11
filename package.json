@@ -2,6 +2,7 @@
   "name": "dxsummit",
   "type": "module",
   "version": "1.0.0",
+  "private": true,
   "packageManager": "pnpm@10.28.2",
   "description": "",
   "author": "",
@@ -9,22 +10,10 @@
   "keywords": [],
   "main": "index.js",
   "scripts": {
-    "start": "pm2 start ecosystem.config.cjs",
-    "stop": "pm2 stop ecosystem.config.cjs",
-    "restart": "pm2 restart ecosystem.config.cjs",
-    "logs": "pm2 logs",
-    "monit": "pm2 monit",
-    "status": "pm2 status",
-    "clean:pm2": "pm2 delete all && pm2 flush"
-  },
-  "dependencies": {
-    "@hono/node-server": "^1.19.9",
-    "dayjs": "^1.11.19",
-    "hono": "^4.11.7",
-    "mongodb": "^7.1.0",
-    "nats": "^2.29.3",
-    "openai": "^6.18.0",
-    "pm2": "^6.0.14"
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "start": "pnpm -r start",
+    "lint": "pnpm -r lint"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^7.0.1",
