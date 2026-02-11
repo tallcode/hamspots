@@ -163,7 +163,7 @@ function connectSSE() {
   spots.value = []
   connected.value = false
   enableFlash.value = false
-  lastUpdate.value = '正在连接...'
+  lastUpdate.value = ''
   
   // 构建URL
   let url = '/sse/spots'

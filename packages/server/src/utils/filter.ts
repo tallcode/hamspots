@@ -21,6 +21,26 @@ export interface FilterConfig {
   dxcc?: {
     include?: string[]  // DXCC primary 前缀列表（只支持包含）
   }
+  callsign?: string // 呼号过滤器（支持 ? * 通配符）
+}
+
+/**
+ * 将呼号模式转换为正则表达式字符串
+ * @param pattern - 用户输入的呼号模式
+ * @returns 正则表达式字符串
+ */
+function getCallsignRegexPattern(pattern: string): string {
+  const hasWildcard = pattern.includes('*') || pattern.includes('?')
+  // 转义正则特殊字符，除了 * 和 ?
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+  
+  if (hasWildcard) {
+    // 将 * 转换为 .*，将 ? 转换为 .，并锚定首尾
+    return '^' + escaped.replace(/\*/g, '.*').replace(/\?/g, '.') + '$'
+  } else {
+    // 默认包含匹配
+    return escaped
+  }
 }
 
 /**
@@ -98,6 +118,13 @@ export function matchFilter(spot: Spot & { marks?: ReturnType<typeof markSpot> }
     if (filter.dxcc.include && filter.dxcc.include.length > 0) {
       if (!filter.dxcc.include.includes(dxccPrimary)) return false
     }
+  }
+
+  // 检查呼号
+  if (filter.callsign && spot.dx) {
+    const pattern = getCallsignRegexPattern(filter.callsign)
+    const regex = new RegExp(pattern, 'i')
+    if (!regex.test(spot.dx)) return false
   }
 
   return true
@@ -241,6 +268,14 @@ export function buildMongoQuery(filter: FilterConfig): any {
   if (filter.dxcc && filter.dxcc.include && filter.dxcc.include.length > 0) {
     conditions.push({
       'dxcc.primary': { $in: filter.dxcc.include }
+    })
+  }
+
+  // 处理呼号过滤器
+  if (filter.callsign) {
+    const pattern = getCallsignRegexPattern(filter.callsign)
+    conditions.push({
+      dx: { $regex: pattern, $options: 'i' }
     })
   }
 

@@ -28,6 +28,7 @@ interface FilterConfig {
   dxcc?: {
     include?: string[]  // 只支持包含
   }
+  callsign?: string
 }
 
 interface DXCCEntity {
@@ -71,6 +72,7 @@ const dxccSelected = ref<Set<string>>(new Set())
 const dxccEntities = ref<DXCCEntity[]>([])
 const dxccSearchQuery = ref('')
 const dxccDialog = ref<HTMLDialogElement | null>(null)
+const callsignFilter = ref('')
 
 // 获取过滤器选项
 onMounted(async () => {
@@ -94,6 +96,11 @@ onMounted(async () => {
 // 构建过滤器配置
 const filterConfig = computed<FilterConfig>(() => {
   const config: FilterConfig = {}
+
+  // 处理呼号过滤器
+  if (callsignFilter.value.trim()) {
+    config.callsign = callsignFilter.value.trim()
+  }
   
   // 处理频率过滤器
   const freqInclude = Object.keys(freqFilter.value).filter(k => freqFilter.value[k] === 'include')
@@ -189,6 +196,7 @@ function removeDxcc(primary: string) {
 
 // 清除所有过滤器
 function clearAllFilters() {
+  callsignFilter.value = ''
   Object.keys(freqFilter.value).forEach(k => freqFilter.value[k] = 'neutral')
   Object.keys(specificFreqFilter.value).forEach(k => specificFreqFilter.value[k] = 'neutral')
   Object.keys(modeFilter.value).forEach(k => modeFilter.value[k] = 'neutral')
@@ -234,7 +242,19 @@ function applyFilter() {
     </div>
     
     <!-- 可滚动区域 -->
-    <div class="space-y-6 overflow-y-auto pr-2 flex-1 min-h-0">
+    <div class="space-y-6 pr-2 flex-1 min-h-0">
+      <!-- 呼号过滤器 -->
+      <div>
+        <h3 class="text-sm font-semibold text-gray-700 mb-3">呼号过滤</h3>
+        <input
+          v-model="callsignFilter"
+          type="text"
+          placeholder="输入呼号 (例如: BG5*, *QRP, JA?B)"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+        <p class="mt-1 text-xs text-gray-500">支持 ? (单字符) 和 * (多字符) 通配符</p>
+      </div>
+
       <!-- 频率波段过滤器 -->
       <div>
         <h3 class="text-sm font-semibold text-gray-700 mb-3">频率波段</h3>
