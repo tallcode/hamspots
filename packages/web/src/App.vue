@@ -127,7 +127,7 @@ function addSpot(spot: Spot, flash = true) {
 }
 
 function getBadgeClass(type: string) {
-  const baseClass = 'inline-flex items-center px-2 py-0.5 rounded-full font-semibold text-[11px] tracking-wide ml-1'
+  const baseClass = 'inline-flex items-center px-2 py-0.5 rounded-full font-semibold text-[11px] tracking-wide ml-1 select-none'
   const colorMap: Record<string, string> = {
     'HF': 'bg-blue-100 text-blue-800',
     'VHF': 'bg-amber-100 text-amber-800',

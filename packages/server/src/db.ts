@@ -9,7 +9,7 @@ const NATS_URL = process.env.NATS_URL || 'nats://localhost:4222'
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017'
 const DB_NAME = 'dxsummit'
 const COLLECTION_NAME = 'spots'
-const TTL_SECONDS = 30 * 24 * 60 * 60 // 30 days
+const TTL_SECONDS = 7 * 24 * 60 * 60 // 7 days
 const DEDUP_WINDOW_MINUTES = Number.parseInt(process.env.DEDUP_WINDOW_MINUTES || '3', 10) // 去重时间窗口（分钟）
 
 async function start() {
