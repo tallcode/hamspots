@@ -7,7 +7,7 @@
     "build": "vite build",
     "dev": "vite",
     "start": "pm2 serve dist 8080 --spa --name dxsummit-web",
-    "stop": "pm2 delete dxsummit-web"
+    "stop": "pm2 stop dxsummit-web"
   },
   "dependencies": {
     "@vueuse/core": "^14.2.1",

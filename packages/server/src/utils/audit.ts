@@ -21,18 +21,22 @@ async function LLMDetect(comment: string) {
       role: 'user',
       content: [
         '你是一个业余无线电爱好者，下面是你接收到的一个DX Spot信息，请分析这个信息',
-        '是否包含不合适公开的词汇(尤其是要符合中国地区的法律,符合中华民族的传统美德,照顾中国人民的情绪)包括但不限于',
-        ' - 违反国家法律法规的内容,尤其是中国法律',
-        ' - 涉及暴力、色情、赌博等敏感内容',
-        ' - 讨论非业余，特别是航空海事铁路频率',
-        ' - 粗口/抱怨/人身攻击',
-        ' - 政治敏感/争议内容/敏感事件/领土争议',
-        ' - LGBTQ+/宗教/种族/性别歧视',
-        ' - 道德败坏',
-        ' - 泄露个人隐私信息',
-        '判断要给出理由, 理由简短中文。',
+        '是否包含不合适公开的词汇(尤其是要符合中国地区的法律,符合中华民族的传统美德,照顾中国人民的情绪)包括',
+        ' - 违反法律',
+        ' - 敏感内容(暴力、色情、赌博、毒品等)',
+        ' - 非业余(讨论非业余无线电，特别是航空海事铁路频率)',
+        ' - 粗口',
+        ' - 抱怨',
+        ' - 人身攻击',
+        ' - 政治(敏感话题/敏感事件/争议内容/领土争议)',
+        ' - 不适合讨论(LGBTQ+/宗教/迷信/人权/战争)',
+        ' - 歧视(种族/性别)',
+        ' - 泄露隐私(个人信息/位置/联系方式)',
+        ' - 广告(推广其他产品/网站)',
+        ' - 其他(可能引起争议或不适合公开讨论的内容)',
+        '判断要给出理由, 理由为上面描述的几种情况中**非括号内**的部分。',
         '请严格按照以下JSON格式返回结果：',
-        '{"badword": boolean, reason: string}',
+        '{"badword": true, reason: "\'stupid\': 人身攻击; \'deaf\': 抱怨;"}',
         '请确保返回的JSON格式正确且不包含多余的文本。',
       ].join('\n'),
     }, {
@@ -43,7 +47,7 @@ async function LLMDetect(comment: string) {
       ].join('\n'),
     }]
     const response = await openai.chat.completions.create({
-      model: 'qwen-flash',
+      model: 'qwen-plus',
       messages,
       stream: false,
       enable_thinking: false,
@@ -61,7 +65,7 @@ async function LLMDetect(comment: string) {
               },
               reason: {
                 type: 'string',
-                description: '理由，简短中文',
+                description: '理由',
               },
             },
             required: ['badword', 'reason'],
@@ -153,7 +157,7 @@ export async function auditCommnet(spot: Spot) {
   }
   const { badword, reason } = (await LLMDetect(comment).catch(() => null)) || { badword: false }
   if (badword) {
-    console.log(`Comment flagged as inappropriate by LLM: "${comment}". Reason: ${reason}`)
+    console.log(`Comment flagged as inappropriate by LLM: "${comment}"(${reason})`)
   }
   else {
     console.log(`Comment passed LLM audit: "${comment}"`)
@@ -161,11 +165,11 @@ export async function auditCommnet(spot: Spot) {
   return { hiddenComment: badword }
 }
 
-// console.log(await auditCommnet({
-//   de: 'EA3HPX',
-//   freq: '14270.0',
-//   dx: 'FY4JIFY',
-//   comment: '',
-//   time: Date.now(),
-//   createdAt: new Date(),
-// }))
+console.log(await auditCommnet({
+  de: 'EA3HPX',
+  freq: '14270.0',
+  dx: 'FY4JIFY',
+  comment: 'too many people w/o brain',
+  time: Date.now(),
+  createdAt: new Date(),
+}))
