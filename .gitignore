@@ -13,6 +13,7 @@ node_modules
 dist
 coverage
 *.local
+.env
 
 # Editor directories and files
 .vscode/*
