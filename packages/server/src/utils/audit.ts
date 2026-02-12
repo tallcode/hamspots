@@ -13,7 +13,7 @@ const openai = API_KEY ? new OpenAI({
   timeout: 5 * 1000,
 }) : null
 
-async function LLMDetect(comment: string) {
+async function LLMDetect(comment: string, advanced = false): Promise<{ badword: boolean, reason: string } | null> {
   if (!openai) {
     return null
   }
@@ -21,34 +21,51 @@ async function LLMDetect(comment: string) {
     const messages: ChatCompletionMessageParam[] = [{
       role: 'user',
       content: [
-        '你是一个业余无线电爱好者，下面是你接收到的一个DX Spot信息，请分析这个信息',
-        '是否包含不合适公开的词汇(尤其是要符合中国地区的法律，符合中华民族的传统美德，照顾中国人民的情绪。注意不要过渡推测或者联想，仅从字面上的含义来判断。不确定的时候先放过)，包括',
-        ' - 违反法律',
-        ' - 敏感内容(暴力、色情、赌博、毒品等)',
-        ' - 非业余(讨论非业余无线电，特别是航空海事铁路频率)',
-        ' - 粗口',
-        ' - 抱怨',
-        ' - 人身攻击',
-        ' - 政治(敏感话题/敏感事件/争议内容/领土争议)',
-        ' - 不适合讨论(LGBTQ+/宗教/迷信/人权/战争)',
-        ' - 歧视(种族/性别)',
-        ' - 泄露隐私(个人信息/位置/联系方式)',
-        ' - 广告(推广其他产品/网站)',
-        ' - 其他(可能引起争议或不适合公开讨论的内容)',
-        '判断要给出理由, 理由为上面描述的几种情况中**非括号内**的部分。',
-        '请严格按照以下JSON格式返回结果：',
-        '{"badword": true, reason: "\'stupid\': 人身攻击; \'deaf\': 抱怨;"}',
-        '请确保返回的JSON格式正确且不包含多余的文本。',
+        // '你是一个业余无线电爱好者，下面是你接收到的一个DX Spot信息，请分析这个信息',
+        // '是否包含不合适公开的词汇(尤其是要符合中国地区的法律，符合中华民族的传统美德，照顾中国人民的情绪。注意不要过渡推测或者联想，仅从字面上的含义来判断。不确定的时候先放过)，包括',
+        // ' - 违反法律',
+        // ' - 敏感内容(暴力、色情、赌博、毒品、诈骗)',
+        // ' - 非业余(讨论非业余无线电，注意仅**当明**确讨论某种**业务**无线电，特别是航空海事铁路频率时才算，其他泛指的无线电不算)',
+        // ' - 粗口',
+        // ' - 人身攻击',
+        // ' - 政治(敏感事件/领土争议)',
+        // ' - 不适合讨论(LGBTQ+/宗教/迷信/人权/战争)',
+        // ' - 歧视(种族/性别)',
+        // ' - 泄露隐私(个人信息/位置/联系方式)',
+        // ' - 广告(推广其他产品/包含网址，尤其是短链接)',
+        // ' - 其他(可能引起争议或不适合公开讨论的内容)',
+        // '判断要给出理由, 理由为上面描述的几种情况中**非括号内**的部分。',
+        // '请严格按照以下JSON格式返回结果：',
+        // '{"badword": boolean, reason: string}',
+        // '请确保返回的JSON格式正确且不包含多余的文本。',
+        'You are an amateur radio enthusiast. Below is a DX Spot comment you received. Please analyze this message.',
+        'Determine if it contains content inappropriate for public display (especially considering compliance with Chinese laws, traditional virtues, and public sentiment. Judge based on literal meaning without over-interpretation. If unsure, assume it is safe). Categories include:',
+        ' - Violation of laws',
+        ' - Sensitive content (violence, pornography, gambling, drugs, fraud)',
+        ' - Non-amateur (Discussing non-amateur radio services. NOTE: Only count if explicitly discussing SPECIFIC commercial services like aviation, marine, railway. General radio terms are fine.)',
+        ' - Profanity',
+        ' - Personal attacks',
+        ' - Political (sensitive topics/events/disputes/territorial issues)',
+        ' - Inappropriate topics (LGBTQ+/religion/superstition/human rights/war)',
+        ' - Discrimination (race/gender)',
+        ' - Privacy leaks (personal info/location/contact details)',
+        ' - Spam/Ads (promoting products/websites, especially short links)',
+        ' - Other (potentially controversial or unsuitable content)',
+        'Provide a reason for your judgment. The reason must be one of the categories listed above (excluding the text in parentheses).',
+        'Please return the result strictly in the following JSON format:',
+        '{"badword": boolean, reason: string}',
+        'Ensure the returned JSON is valid and contains no extra text.',
       ].join('\n'),
     }, {
       role: 'user',
       content: [
-        '以下下是接收到的Spot中的Comment信息:',
+        // '以下下是接收到的Spot中的Comment信息:',
+        'Here is the comment from the Spot:',
         comment,
       ].join('\n'),
     }]
     const response = await openai.chat.completions.create({
-      model: 'qwen-flash',
+      model: advanced ? 'qwen-plus' : 'qwen-flash',
       messages,
       stream: false,
       enable_thinking: false,
@@ -156,7 +173,12 @@ export async function auditCommnet(spot: Spot) {
     return { hiddenComment: false }
   }
   // 调用 LLM 进行审核
-  const { badword, reason } = (await LLMDetect(comment).catch(() => null)) || { badword: false }
+  const { badword: fastCheck } = (await LLMDetect(comment).catch(() => null)) || { badword: false }
+  if (!fastCheck) {
+    return { hiddenComment: false }
+  }
+  // 如果快速检查有问题，再用更强大的模型复核一次
+  const { badword, reason } = (await LLMDetect(comment, true).catch(() => null)) || { badword: false, reason: '' }
   if (badword) {
     console.log(`Comment flagged as inappropriate by LLM: "${comment}"(${reason})`)
   }
@@ -166,11 +188,11 @@ export async function auditCommnet(spot: Spot) {
   return { hiddenComment: badword }
 }
 
-// console.log(await auditCommnet({
-//   de: 'EA3HPX',
-//   freq: '14270.0',
-//   dx: 'FY4JIFY',
-//   comment: 'Vy fb condx with the Breakfast',
-//   time: Date.now(),
-//   createdAt: new Date(),
-// }))
+console.log(await auditCommnet({
+  de: 'EA3HPX',
+  freq: '14270.0',
+  dx: 'FY4JIFY',
+  comment: 'sei periodo sbagliato',
+  time: Date.now(),
+  createdAt: new Date(),
+}))
