@@ -21,7 +21,7 @@ async function LLMDetect(comment: string) {
       role: 'user',
       content: [
         '你是一个业余无线电爱好者，下面是你接收到的一个DX Spot信息，请分析这个信息',
-        '是否包含不合适公开的词汇(尤其是要符合中国地区的法律,符合中华民族的传统美德,照顾中国人民的情绪)包括',
+        '是否包含不合适公开的词汇(尤其是要符合中国地区的法律，符合中华民族的传统美德，照顾中国人民的情绪。注意不要过渡推测或者联想，仅从字面上的含义来判断。不确定的时候先放过)，包括',
         ' - 违反法律',
         ' - 敏感内容(暴力、色情、赌博、毒品等)',
         ' - 非业余(讨论非业余无线电，特别是航空海事铁路频率)',
@@ -169,7 +169,7 @@ export async function auditCommnet(spot: Spot) {
 //   de: 'EA3HPX',
 //   freq: '14270.0',
 //   dx: 'FY4JIFY',
-//   comment: 'too many people w/o brain',
+//   comment: 'china taipei',
 //   time: Date.now(),
 //   createdAt: new Date(),
 // }))
