@@ -117,17 +117,21 @@ function isProfane(string: string): boolean {
 }
 
 export async function auditCommnet(spot: Spot) {
-  if (!openai) {
+  const { comment } = spot
+  if (!comment || comment.trim().length === 0) {
     return { hiddenComment: false }
   }
-  const { comment } = spot
-  // 检查是否包含敏感词
+  if(comment.length > 100) {
+    console.log(`Comment flagged as inappropriate due to length > 100: "${comment}"`)
+    return { hiddenComment: true }
+  }
+  // 先用本地敏感词库过滤一遍
   if (isProfane(comment)) {
     console.log(`Comment flagged as inappropriate by badwords-list: "${comment}"`)
     return { hiddenComment: true }
   }
   let _comment = comment.replace(/[\r\n]+/g, ' ').trim()
-  if (_comment.length === 5) {
+  if (_comment.length < 5) {
     return { hiddenComment: false }
   }
   // 先简单过滤一些常见的好词，减少调用次数
@@ -143,6 +147,10 @@ export async function auditCommnet(spot: Spot) {
     return { hiddenComment: false }
   }
   // 调用 LLM 进行审核
+  if (!openai) {
+    console.warn('OpenAI client not initialized, skipping LLM audit') 
+    return { hiddenComment: false }
+  }
   const { badword, reason } = (await LLMDetect(comment).catch(() => null)) || { badword: false }
   if (badword) {
     console.log(`Comment flagged as inappropriate by LLM: "${comment}". Reason: ${reason}`)

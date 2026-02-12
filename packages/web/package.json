@@ -12,13 +12,13 @@
   "dependencies": {
     "@vueuse/core": "^14.2.1",
     "dayjs": "^1.11.19",
+    "pm2": "^6.0.14",
     "vue": "^3.5.28"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "@vitejs/plugin-vue": "^6.0.4",
     "autoprefixer": "^10.4.24",
-    "pm2": "^6.0.14",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
