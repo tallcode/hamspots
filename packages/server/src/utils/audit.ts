@@ -170,7 +170,7 @@ export async function auditCommnet(spot: Spot) {
 //   de: 'EA3HPX',
 //   freq: '14270.0',
 //   dx: 'FY4JIFY',
-//   comment: '',
+//   comment: 'Vy fb condx with the Breakfast',
 //   time: Date.now(),
 //   createdAt: new Date(),
 // }))

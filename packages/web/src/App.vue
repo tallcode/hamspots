@@ -272,7 +272,7 @@ onMounted(() => {
     <!-- Filter Panel Dialog -->
     <dialog 
       ref="filterDialog"
-      class="w-full max-w-[90vw] rounded-xl p-0 backdrop:bg-black/50 m-auto"
+      class="max-w-3xl w-[90vw] rounded-xl p-0 backdrop:bg-black/50 m-auto"
       @click.self="closeFilter"
     >
       <FilterPanel 
