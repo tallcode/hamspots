@@ -440,7 +440,7 @@ function applyFilter() {
     <!-- DXCC 选择弹窗 -->
     <dialog
       ref="dxccDialog"
-      class="w-full max-w-[90vw] rounded-xl p-0 backdrop:bg-black/50 m-auto shadow-2xl"
+      class="w-[80vw] max-w-2xl rounded-xl p-0 backdrop:bg-black/50 m-auto shadow-2xl"
       @click.self="closeDxccDialog"
     >
       <div class="flex flex-col h-[70vh]">
