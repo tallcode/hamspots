@@ -10,6 +10,7 @@ const API_KEY = process.env.API_KEY
 const openai = API_KEY ? new OpenAI({
   apiKey: process.env.API_KEY, // 从环境变量读取
   baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+  timeout: 5 * 1000,
 }) : null
 
 async function LLMDetect(comment: string) {
@@ -47,7 +48,7 @@ async function LLMDetect(comment: string) {
       ].join('\n'),
     }]
     const response = await openai.chat.completions.create({
-      model: 'qwen-plus',
+      model: 'qwen-flash',
       messages,
       stream: false,
       enable_thinking: false,
@@ -125,7 +126,7 @@ export async function auditCommnet(spot: Spot) {
   if (!comment || comment.trim().length === 0) {
     return { hiddenComment: false }
   }
-  if(comment.length > 100) {
+  if (comment.length > 100) {
     console.log(`Comment flagged as inappropriate due to length > 100: "${comment}"`)
     return { hiddenComment: true }
   }
@@ -169,7 +170,7 @@ export async function auditCommnet(spot: Spot) {
 //   de: 'EA3HPX',
 //   freq: '14270.0',
 //   dx: 'FY4JIFY',
-//   comment: 'china taipei',
+//   comment: '',
 //   time: Date.now(),
 //   createdAt: new Date(),
 // }))
