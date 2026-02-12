@@ -55,6 +55,41 @@ const freqFilter = ref<FilterMarks>({
 const specificFreqFilter = ref<FilterMarks>({})
 const specificFreqOptions = ref<string[]>([])
 
+// 频率解析和排序逻辑
+const parseFrequency = (freq: string) => {
+  const match = freq.match(/([\d.]+)\s*([a-zA-Z]+)/)
+  if (!match) return 0
+  
+  const value = parseFloat(match[1])
+  const unit = match[2].toUpperCase()
+  
+  const multipliers: Record<string, number> = {
+    'HZ': 1,
+    'KHZ': 1e3,
+    'MHZ': 1e6,
+    'GHZ': 1e9
+  }
+  
+  return value * (multipliers[unit] || 1)
+}
+
+const sortedSpecificFreqs = computed(() => {
+  return [...specificFreqOptions.value].sort((a, b) => parseFrequency(a) - parseFrequency(b))
+})
+
+// 常用波段列表：80m/40m/30m/20m/17m/15m/12m/10m/6m/2m/0.7m
+const commonBands = ['3.5MHz', '7MHz', '10MHz', '14MHz', '18MHz', '21MHz', '24MHz', '28MHz', '50MHz', '144MHz', '430MHz']
+
+const visibleSpecificFreqs = computed(() => {
+  return sortedSpecificFreqs.value.filter(freq => commonBands.includes(freq))
+})
+
+const hiddenSpecificFreqs = computed(() => {
+  return sortedSpecificFreqs.value.filter(freq => !visibleSpecificFreqs.value.includes(freq))
+})
+
+const showMoreFreqs = ref(false)
+
 const modeFilter = ref<FilterMarks>({
   'DIGI': 'neutral',
   'CW': 'neutral',
@@ -241,114 +276,148 @@ function applyFilter() {
       </button>
     </div>
     
-    <!-- 可滚动区域 -->
-    <div class="space-y-6 pr-2 flex-1 min-h-0">
-      <!-- 呼号过滤器 -->
-      <div>
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">呼号过滤</h3>
-        <input
-          v-model="callsignFilter"
-          type="text"
-          placeholder="输入呼号 (例如: BG5*, *QRP, JA?B)"
-          class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-        <p class="mt-1 text-xs text-gray-500">支持 ? (单字符) 和 * (多字符) 通配符</p>
-      </div>
-
-      <!-- 频率波段过滤器 -->
-      <div>
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">频率波段</h3>
-        <div class="flex flex-wrap gap-2">
-          <div
-            v-for="(state, key) in freqFilter"
-            :key="key"
-            @click="toggleFilterState(freqFilter, key)"
-            :class="getFilterButtonClass(state)"
-          >
-            <span class="mr-1">{{ getFilterIcon(state) }}</span>
-            {{ key }}
-          </div>
-        </div>
-      </div>
-      
-      <!-- 具体频率过滤器 -->
-      <div v-if="specificFreqOptions.length > 0">
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">具体频率</h3>
-        <div class="flex flex-wrap gap-2">
-          <div
-            v-for="(state, key) in specificFreqFilter"
-            :key="key"
-            @click="toggleFilterState(specificFreqFilter, key)"
-            :class="getFilterButtonClass(state)"
-          >
-            <span class="mr-1">{{ getFilterIcon(state) }}</span>
-            {{ key }}
-          </div>
-        </div>
-      </div>
-      
-      <!-- 模式过滤器 -->
-      <div>
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">通信模式</h3>
-        <div class="flex flex-wrap gap-2">
-          <div
-            v-for="(state, key) in modeFilter"
-            :key="key"
-            @click="toggleFilterState(modeFilter, key)"
-            :class="getFilterButtonClass(state)"
-          >
-            <span class="mr-1">{{ getFilterIcon(state) }}</span>
-            {{ key }}
-          </div>
-        </div>
-      </div>
-      
-      <!-- DX标记过滤器 -->
-      <div>
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">DX 标记</h3>
-        <div class="flex flex-wrap gap-2">
-          <div
-            v-for="(state, key) in dxFilter"
-            :key="key"
-            @click="toggleFilterState(dxFilter, key)"
-            :class="getFilterButtonClass(state)"
-          >
-            <span class="mr-1">{{ getFilterIcon(state) }}</span>
-            {{ key }}
-          </div>
-        </div>
-      </div>
-
-      <!-- DXCC 过滤器 -->
-      <div>
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">DXCC 实体</h3>
-        
-        <!-- 已选择的 DXCC -->
-        <div v-if="selectedDxccEntities.length > 0" class="flex flex-wrap gap-2 mb-3">
-          <div
-            v-for="entity in selectedDxccEntities"
-            :key="entity.primary"
-            class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium border-2 bg-blue-100 border-blue-500 text-blue-800"
-          >
-            {{ entity.name }}
-            <span class="ml-1 text-xs opacity-60">({{ entity.primary }})</span>
-            <button
-              @click="removeDxcc(entity.primary)"
-              class="ml-2 text-base opacity-60 hover:opacity-100"
+    <!-- 可滚动区域 - 两列布局 -->
+    <div class="flex-1 min-h-0 overflow-y-auto pr-2">
+      <div class="grid grid-cols-2 gap-6">
+        <!-- 左列：呼号、DXCC、通信模式、DX标记 -->
+        <div class="space-y-6">
+          <!-- 呼号过滤器 -->
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">呼号过滤</h3>
+            <input
+              v-model="callsignFilter"
+              type="text"
+              placeholder="输入呼号 (例如: BG5*, *QRP, JA?B)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              ×
+            <p class="mt-1 text-xs text-gray-500">支持 ? (单字符) 和 * (多字符) 通配符</p>
+          </div>
+
+          <!-- DXCC 过滤器 -->
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">DXCC 实体</h3>
+            
+            <!-- 已选择的 DXCC -->
+            <div v-if="selectedDxccEntities.length > 0" class="flex flex-wrap gap-2 mb-3">
+              <div
+                v-for="entity in selectedDxccEntities"
+                :key="entity.primary"
+                class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium border-2 bg-blue-100 border-blue-500 text-blue-800"
+              >
+                {{ entity.name }}
+                <span class="ml-1 text-xs opacity-60">({{ entity.primary }})</span>
+                <button
+                  @click="removeDxcc(entity.primary)"
+                  class="ml-2 text-base opacity-60 hover:opacity-100"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            
+            <!-- 打开 DXCC 选择弹窗的按钮 -->
+            <button
+              @click="openDxccDialog"
+              class="w-full px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 text-left flex items-center gap-2 transition-colors"
+            >
+              <span class="text-lg leading-none">+</span>
+              添加 DXCC 实体...
             </button>
           </div>
+
+          <!-- 模式过滤器 -->
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">通信模式</h3>
+            <div class="flex flex-wrap gap-2">
+              <div
+                v-for="(state, key) in modeFilter"
+                :key="key"
+                @click="toggleFilterState(modeFilter, key)"
+                :class="getFilterButtonClass(state)"
+              >
+                <span class="mr-1">{{ getFilterIcon(state) }}</span>
+                {{ key }}
+              </div>
+            </div>
+          </div>
+          
+          <!-- DX标记过滤器 -->
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">DX 标记</h3>
+            <div class="flex flex-wrap gap-2">
+              <div
+                v-for="(state, key) in dxFilter"
+                :key="key"
+                @click="toggleFilterState(dxFilter, key)"
+                :class="getFilterButtonClass(state)"
+              >
+                <span class="mr-1">{{ getFilterIcon(state) }}</span>
+                {{ key }}
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <!-- 打开 DXCC 选择弹窗的按钮 -->
-        <button
-          @click="openDxccDialog"
-          class="w-full px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 text-left flex items-center gap-2 transition-colors"
-        >
-          <span class="text-lg leading-none">+</span>
-          添加 DXCC 实体...
-        </button>
+
+        <!-- 右列：频率波段、具体频率 -->
+        <div class="space-y-6">
+          <!-- 频率波段过滤器 -->
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">波段类型</h3>
+            <div class="flex flex-wrap gap-2">
+              <div
+                v-for="(state, key) in freqFilter"
+                :key="key"
+                @click="toggleFilterState(freqFilter, key)"
+                :class="getFilterButtonClass(state)"
+              >
+                <span class="mr-1">{{ getFilterIcon(state) }}</span>
+                {{ key }}
+              </div>
+            </div>
+          </div>
+          
+          <!-- 具体频率过滤器 -->
+          <div v-if="specificFreqOptions.length > 0">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">波段</h3>
+            <div class="flex flex-col gap-3">
+              <!-- 常用波段 (80m-0.7cm) -->
+              <div class="flex flex-wrap gap-2">
+                <div
+                  v-for="freq in visibleSpecificFreqs"
+                  :key="freq"
+                  @click="toggleFilterState(specificFreqFilter, freq)"
+                  :class="getFilterButtonClass(specificFreqFilter[freq])"
+                >
+                  <span class="mr-1">{{ getFilterIcon(specificFreqFilter[freq]) }}</span>
+                  {{ freq }}
+                </div>
+              </div>
+              
+              <!-- 低波段/其他 (折叠) -->
+              <div v-if="hiddenSpecificFreqs.length > 0">
+                <button 
+                  @click="showMoreFreqs = !showMoreFreqs"
+                  class="text-xs text-gray-500 hover:text-blue-600 flex items-center gap-1 mb-2"
+                >
+                  {{ showMoreFreqs ? '收起更多波段' : '查看更多波段' }}
+                  <span :class="{ 'rotate-180': showMoreFreqs }" class="transition-transform transform inline-block">▼</span>
+                </button>
+                
+                <div v-show="showMoreFreqs" class="flex flex-wrap gap-2">
+                  <div
+                    v-for="freq in hiddenSpecificFreqs"
+                    :key="freq"
+                    @click="toggleFilterState(specificFreqFilter, freq)"
+                    :class="getFilterButtonClass(specificFreqFilter[freq])"
+                  >
+                    <span class="mr-1">{{ getFilterIcon(specificFreqFilter[freq]) }}</span>
+                    {{ freq }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     
