@@ -1,4 +1,5 @@
 import type { Spot } from './parseSpot.js'
+import { Buffer } from 'node:buffer'
 import { markSpot } from './mark.js'
 
 export interface FilterConfig {

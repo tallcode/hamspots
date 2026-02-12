@@ -1,5 +1,6 @@
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import type { Spot } from './parseSpot.js'
+import process from 'node:process'
 import { array as badwordsList } from 'badwords-list'
 import OpenAI from 'openai'
 import 'dotenv/config'
@@ -7,11 +8,13 @@ import 'dotenv/config'
 const API_KEY = process.env.API_KEY
 
 // 初始化 openai 客户端
-const openai = API_KEY ? new OpenAI({
-  apiKey: process.env.API_KEY, // 从环境变量读取
-  baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-  timeout: 5 * 1000,
-}) : null
+const openai = API_KEY
+  ? new OpenAI({
+      apiKey: API_KEY, // 从环境变量读取
+      baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      timeout: 5 * 1000,
+    })
+  : null
 
 async function LLMDetect(comment: string, advanced = false): Promise<{ badword: boolean, reason: string } | null> {
   if (!openai) {
@@ -109,27 +112,32 @@ async function LLMDetect(comment: string, advanced = false): Promise<{ badword: 
 
 const goodWordsRegList = [
   // 常见问候和缩写
-  /\b(73|88|thx|tnx|tu|de|dx|cq|cw|ssb|ft8|ft4)\b/gi,
+  /\b(73|88|thx|tnx|tu|de|dx|cq|cw|ssb|ft8|ft4|gm|ga|ge|gd|gl|gb|cul|hpe|sri|dr|fer|nw|pls|hi|om)\b/gi,
   // QSO 相关术语
-  /\b(qso|qrp|qsl|qrz|qrx|qrt|qrv|qth|om|usb|lsb|fm|rtty)\b/gi,
+  /\b(qso|qrp|qsl|qrz|qrx|qrt|qrv|qth|qsb|qsy|qrm|qrn|qrl|qro|qru)\b/gi,
   // 比赛和活动
-  /\b(contest|wwff|cqww|wpx|arrl|lotw|wapc|vucc|iota|sota|pota|dxcc|iaru|itu)\b/gi,
+  /\b(contest|award|wwff|cqww|wpx|arrl|lotw|wapc|vucc|iota|sota|pota|yota|dxcc|iaru|itu|wac|waz|wwa|rda|rdxc|jidx|fd|field\s?day|pacc|rdc|naqp|sprint)\b/gi,
   // 卫星和模式
-  /\b(sat|satellite|jt65|jt9|psk31|sstv)\b/gi,
+  /\b(sat|satellite|jt65|jt9|psk31|sstv|usb|lsb|fm|rtty|am|varac|vara|js8|wspr|msk144|q65|hell|olivia|thor|throb|domino|mt63)\b/gi,
   // 技术用语
-  /\b(pse|fb|vgd|ur|es|hw|cuagn|bcnu|rrr|bk)\b/gi,
+  /\b(pse|fb|vgd|ur|es|hw|cu|agn|buro|rrr|bk|wx|band|anto|call|calling|beacon|cqing|rpt|rcvd|cfmd|hr|abt|condx|nil|tks|wkg|wkd|cl|cls|corr|correct)\b/gi,
+  // 操作相关
+  /\b(up|dwn|down|split|simplex|qsx|pileup|lp|sp)\b/gi,
   // 设备相关
-  /\b(pwr|ant|antenna|rig|beam|yagi|dipole|vertical|wx)\b/gi,
+  /\b(pwr|ant|antenna|rig|beam|yagi|dipole|vertical|gp|efhw|tx|rx|kw|amp|linear|ele|el|\dele)\b/gi,
   // 频段
-  /\b(hf|vhf|uhf|10m|15m|20m|40m|80m|160m)\b/gi,
+  /\b(hf|vhf|uhf|warc|shf|ehf|10m|12m|15m|17m|20m|30m|40m|60m|80m|160m|6m|2m|70cm|23cm)\b/gi,
   // 呼号相关
-  /\b(sk|xyl|yl)\b/gi,
+  /\b(sk|xyl|yl|op|ops|stn)\b/gi,
+  // 大洲缩写
+  /\b(af|as|eu|na|oc|sa|an)\b/gi,
   // 单位和信号报告
-  /\b\d+hz\b/gi,
-  /\b\d+db\b/gi,
-  /\b\d+km\b/gi,
+  /\b\d+\s?(hz|khz|mhz|ghz)\b/gi,
+  /\b\d+\s?db\b/gi,
+  /\b\d+\s?km\b/gi,
+  /\b\d+\s?w\b/gi,
   /\b[A-R]{2}\d{2}(?:[A-R]{2})?\b/gi, // Maidenhead locator 格式，如 FN42
-  /\b(5\d{1,2}|59\d?)\b/g, // 信号报告 599, 59, 579 等
+  /\b5\d{1,2}\b/g, // 信号报告 599, 59, 579 等
 ]
 
 const badWordsRegExpList = badwordsList.map((word: string) => new RegExp(`\\b${word.replace(/(\W)/g, '\\$1')}\\b`, 'gi'))
@@ -173,7 +181,7 @@ export async function auditCommnet(spot: Spot) {
     return { hiddenComment: false }
   }
   // 调用 LLM 进行审核
-  const { badword: fastCheck } = (await LLMDetect(comment).catch(() => null)) || { badword: false }
+  const { badword: fastCheck } = (await LLMDetect(comment, false).catch(() => null)) || { badword: false }
   if (!fastCheck) {
     return { hiddenComment: false }
   }
@@ -188,11 +196,11 @@ export async function auditCommnet(spot: Spot) {
   return { hiddenComment: badword }
 }
 
-console.log(await auditCommnet({
-  de: 'EA3HPX',
-  freq: '14270.0',
-  dx: 'FY4JIFY',
-  comment: 'sei periodo sbagliato',
-  time: Date.now(),
-  createdAt: new Date(),
-}))
+// console.log(await auditCommnet({
+//   de: 'EA3HPX',
+//   freq: '14270.0',
+//   dx: 'FY4JIFY',
+//   comment: '',
+//   time: Date.now(),
+//   createdAt: new Date(),
+// }))
