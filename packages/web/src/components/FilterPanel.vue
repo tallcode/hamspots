@@ -265,8 +265,8 @@ function applyFilter() {
 </script>
 
 <template>
-  <div class="bg-white border border-gray-200 rounded-xl shadow-2xl p-6 flex flex-col max-h-[90vh]">
-    <div class="flex items-center justify-between mb-4">
+  <div class="bg-white rounded-xl shadow-2xl py-6 flex flex-col max-h-[90vh]">
+    <div class="flex items-center justify-between mb-4 px-6">
       <h2 class="text-lg font-semibold text-gray-900">过滤器设置</h2>
       <button
         @click="clearAllFilters"
@@ -276,9 +276,9 @@ function applyFilter() {
       </button>
     </div>
     
-    <!-- 可滚动区域 - 两列布局 -->
-    <div class="flex-1 min-h-0 overflow-y-auto pr-2">
-      <div class="grid grid-cols-2 gap-6">
+    <!-- 可滚动区域 - 响应式布局 -->
+    <div class="flex-1 min-h-0 overflow-y-auto">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 px-6">
         <!-- 左列：呼号、DXCC、通信模式、DX标记 -->
         <div class="space-y-6">
           <!-- 呼号过滤器 -->
@@ -422,7 +422,7 @@ function applyFilter() {
     </div>
     
     <!-- 底部按钮 -->
-    <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+    <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200 px-6">
       <button
         @click="applyFilter"
         class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
@@ -440,7 +440,7 @@ function applyFilter() {
     <!-- DXCC 选择弹窗 -->
     <dialog
       ref="dxccDialog"
-      class="max-w-2xl w-full rounded-xl p-0 backdrop:bg-black/50 m-auto shadow-2xl"
+      class="w-full max-w-[90vw] rounded-xl p-0 backdrop:bg-black/50 m-auto shadow-2xl"
       @click.self="closeDxccDialog"
     >
       <div class="flex flex-col h-[70vh]">
@@ -463,7 +463,7 @@ function applyFilter() {
           <div v-if="filteredDxccEntities.length === 0" class="text-center py-8 text-gray-500">
             未找到匹配的 DXCC 实体
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div
               v-for="entity in filteredDxccEntities.slice(0, 100)"
               :key="entity.primary"

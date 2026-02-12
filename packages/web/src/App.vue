@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useIntervalFn, useTimeoutFn } from '@vueuse/core'
+import { useIntervalFn, useTimeoutFn, useMediaQuery } from '@vueuse/core'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import 'dayjs/locale/zh-cn'
@@ -61,6 +61,7 @@ let timeDiff = 0 // 服务器时间与本地时间的差值(毫秒)
 // 过滤器相关状态
 const filterDialog = ref<HTMLDialogElement | null>(null)
 const currentFilterConfig = ref<FilterConfig>({})
+const isMdAndAbove = useMediaQuery('(min-width: 768px)')
 
 // 检查是否有激活的过滤器
 function hasActiveFilter() {
@@ -85,6 +86,7 @@ useIntervalFn(() => {
 function formatTime(ts: number) {
   if (!ts) return '-'
   
+
   // currentTime.value已是校准后的时间，直接使用
   const diff = Math.abs(currentTime.value - ts)
   
@@ -96,7 +98,13 @@ function formatTime(ts: number) {
     }
     return `${minutes} 分钟前`
   }
+
+  // 小于md屏幕，只显示HH:mm
+  if (!isMdAndAbove.value) {
+    return dayjs(ts).utc().format('HH:mm')
+  }
   
+  // md及以上屏幕，使用原有逻辑
   // 超过1小时，显示UTC时间，并根据日期决定显示格式
   const now = dayjs(currentTime.value).utc()
   const time = dayjs(ts).utc()
@@ -126,8 +134,10 @@ function addSpot(spot: Spot, flash = true) {
   lastUpdate.value = `最近更新 ${new Date().toISOString().split('.')[0].replace('T', ' ')}(UTC)`
 }
 
-function getBadgeClass(type: string) {
-  const baseClass = 'inline-flex items-center px-2 py-0.5 rounded-full font-semibold text-[11px] tracking-wide ml-1 select-none'
+function getBadgeClass(type: string, location: 'freq' | 'dx' = 'dx') {
+  // 频率列badge在1024px以下隐藏，DX列badge在768px以下隐藏
+  const responsiveClass = location === 'freq' ? 'hidden lg:inline-flex' : 'hidden md:inline-flex'
+  const baseClass = `${responsiveClass} items-center px-2 py-0.5 rounded-full font-semibold text-[11px] tracking-wide ml-1 select-none`
   const colorMap: Record<string, string> = {
     'HF': 'bg-blue-100 text-blue-800',
     'VHF': 'bg-amber-100 text-amber-800',
@@ -259,7 +269,7 @@ onMounted(() => {
     <!-- Filter Panel Dialog -->
     <dialog 
       ref="filterDialog"
-      class="max-w-4xl w-full rounded-xl p-0 backdrop:bg-black/50 m-auto"
+      class="w-full max-w-[90vw] rounded-xl p-0 backdrop:bg-black/50 m-auto"
       @click.self="closeFilter"
     >
       <FilterPanel 
@@ -279,12 +289,12 @@ onMounted(() => {
         <table class="w-full border-collapse text-sm">
           <thead>
             <tr class="bg-gray-50">
-              <th class="text-left font-semibold text-gray-700 border-b border-gray-200 px-3.5 py-3 sticky top-0 bg-gray-50 z-10">Spotter</th>
-              <th class="text-left font-semibold text-gray-700 border-b border-gray-200 px-3.5 py-3 sticky top-0 bg-gray-50 z-10">Freq.</th>
-              <th class="text-left font-semibold text-gray-700 border-b border-gray-200 px-3.5 py-3 sticky top-0 bg-gray-50 z-10">DX</th>
-              <th class="text-left font-semibold text-gray-700 border-b border-gray-200 px-3.5 py-3 sticky top-0 bg-gray-50 z-10">Time</th>
-              <th class="text-left font-semibold text-gray-700 border-b border-gray-200 px-3.5 py-3 sticky top-0 bg-gray-50 z-10">Info</th>
-              <th class="text-left font-semibold text-gray-700 border-b border-gray-200 px-3.5 py-3 sticky top-0 bg-gray-50 z-10">DXCC</th>
+              <th class="text-left font-semibold text-gray-700 border-b border-gray-200 px-2 py-1.5 md:px-3.5 md:py-3 sticky top-0 bg-gray-50 z-10">Spotter</th>
+              <th class="text-left font-semibold text-gray-700 border-b border-gray-200 px-2 py-1.5 md:px-3.5 md:py-3 sticky top-0 bg-gray-50 z-10">Freq.</th>
+              <th class="text-left font-semibold text-gray-700 border-b border-gray-200 px-2 py-1.5 md:px-3.5 md:py-3 sticky top-0 bg-gray-50 z-10">DX</th>
+              <th class="text-left font-semibold text-gray-700 border-b border-gray-200 px-2 py-1.5 md:px-3.5 md:py-3 sticky top-0 bg-gray-50 z-10">Time</th>
+              <th class="hidden sm:table-cell text-left font-semibold text-gray-700 border-b border-gray-200 px-2 py-1.5 md:px-3.5 md:py-3 sticky top-0 bg-gray-50 z-10">Info</th>
+              <th class="hidden md:table-cell text-left font-semibold text-gray-700 border-b border-gray-200 px-2 py-1.5 md:px-3.5 md:py-3 sticky top-0 bg-gray-50 z-10">DXCC</th>
             </tr>
           </thead>
           <tbody>
@@ -297,21 +307,21 @@ onMounted(() => {
               class="transition-all duration-500 hover:bg-gray-50"
               :class="{ 'animate-flash': spot.isFlash }"
             >
-              <td class="px-3.5 py-3 border-b border-gray-200 align-top">{{ spot.de }}</td>
-              <td class="px-3.5 py-3 border-b border-gray-200 align-top">
+              <td class="px-2 py-1.5 md:px-3.5 md:py-3 border-b border-gray-200 align-top whitespace-nowrap">{{ spot.de }}</td>
+              <td class="px-2 py-1.5 md:px-3.5 md:py-3 border-b border-gray-200 align-top whitespace-nowrap">
                 {{ spot.freq }}
                 <span 
                   v-for="m in spot.marks?.modeMarks" 
                   :key="m" 
-                  :class="getBadgeClass(m)"
+                  :class="getBadgeClass(m, 'freq')"
                 >{{ m }}</span>
                 <span 
                   v-for="m in spot.marks?.freqMarks" 
                   :key="m" 
-                  :class="getBadgeClass(m)"
+                  :class="getBadgeClass(m, 'freq')"
                 >{{ m }}</span>
               </td>
-              <td class="px-3.5 py-3 border-b border-gray-200 align-top">
+              <td class="px-2 py-1.5 md:px-3.5 md:py-3 border-b border-gray-200 align-top">
                 <strong class="font-semibold text-gray-900">{{ spot.dx }}</strong>
                 <span 
                   v-if="spot.dxcc" 
@@ -323,11 +333,11 @@ onMounted(() => {
                   :class="getBadgeClass(m)"
                 >{{ m }}</span>
               </td>
-              <td class="px-3.5 py-3 border-b border-gray-200 align-top text-gray-500">
+              <td class="px-2 py-1.5 md:px-3.5 md:py-3 border-b border-gray-200 align-top text-gray-500 whitespace-nowrap">
                 {{ formatTime(spot.time) }}
               </td>
-              <td class="px-3.5 py-3 border-b border-gray-200 align-top">{{ spot.comment }}</td>
-              <td class="px-3.5 py-3 border-b border-gray-200 align-top">{{ spot.dxcc ? spot.dxcc.name : '-' }}</td>
+              <td class="hidden sm:table-cell px-2 py-1.5 md:px-3.5 md:py-3 border-b border-gray-200 align-top">{{ spot.comment }}</td>
+              <td class="hidden md:table-cell px-2 py-1.5 md:px-3.5 md:py-3 border-b border-gray-200 align-top whitespace-nowrap">{{ spot.dxcc ? spot.dxcc.name : '-' }}</td>
             </tr>
           </tbody>
         </table>
