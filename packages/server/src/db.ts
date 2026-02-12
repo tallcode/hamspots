@@ -1,9 +1,10 @@
+import type { Spot } from './utils/parseSpot.js'
 import process from 'node:process'
 import { MongoClient } from 'mongodb'
 import { connect as natsConnect, StringCodec } from 'nats'
 import { getDXCC } from './utils/cty.js'
 import { markSpot } from './utils/mark.js'
-import type { Spot } from './utils/parseSpot.js'
+import { auditCommnet } from './utils/audit.js'
 
 const NATS_URL = process.env.NATS_URL || 'nats://localhost:4222'
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017'
@@ -64,7 +65,8 @@ async function start() {
           if (!existing) {
             const marks = markSpot(spot)
             const dxcc = getDXCC(spot.dx)
-            const _spot = { ...spot, marks, dxcc }
+            const audit = await auditCommnet(spot)
+            const _spot = { ...spot, marks, dxcc, audit }
             await collection.insertOne(_spot)
             nc.publish('spots.clean', sc.encode(JSON.stringify(_spot)))
             console.log(`spot: ${_spot.de} ${_spot.freq} ${_spot.dx}`)

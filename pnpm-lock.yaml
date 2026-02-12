@@ -24,6 +24,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.9
         version: 1.19.9(hono@4.11.7)
+      badwords-list:
+        specifier: 2.0.1-4
+        version: 2.0.1-4
       dayjs:
         specifier: ^1.11.19
         version: 1.11.19
@@ -1123,6 +1126,9 @@ packages:
     hasBin: true
     peerDependencies:
       postcss: ^8.1.0
+
+  badwords-list@2.0.1-4:
+    resolution: {integrity: sha512-FxfZUp7B9yCnesNtFQS9v6PvZdxTYa14Q60JR6vhjdQdWI4naTjJIyx22JzoER8ooeT8SAAKoHLjKfCV7XgYUQ==}
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -3672,6 +3678,8 @@ snapshots:
       picocolors: 1.1.1
       postcss: 8.5.6
       postcss-value-parser: 4.2.0
+
+  badwords-list@2.0.1-4: {}
 
   balanced-match@1.0.2: {}
 

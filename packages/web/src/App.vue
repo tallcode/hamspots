@@ -23,6 +23,9 @@ interface Spot {
     freqMarks?: string[]
     dxMarks?: string[]
     modeMarks?: string[]
+  },
+  audit?: {
+    hiddenComment: boolean
   }
   _id?: string
   isFlash?: boolean
@@ -336,7 +339,7 @@ onMounted(() => {
               <td class="px-2 py-1.5 md:px-3.5 md:py-3 border-b border-gray-200 align-top text-gray-500 whitespace-nowrap">
                 {{ formatTime(spot.time) }}
               </td>
-              <td class="hidden sm:table-cell px-2 py-1.5 md:px-3.5 md:py-3 border-b border-gray-200 align-top">{{ spot.comment }}</td>
+              <td class="hidden sm:table-cell px-2 py-1.5 md:px-3.5 md:py-3 border-b border-gray-200 align-top">{{ spot.audit?.hiddenComment ? '***' : spot.comment }}</td>
               <td class="hidden md:table-cell px-2 py-1.5 md:px-3.5 md:py-3 border-b border-gray-200 align-top whitespace-nowrap">{{ spot.dxcc ? spot.dxcc.name : '-' }}</td>
             </tr>
           </tbody>

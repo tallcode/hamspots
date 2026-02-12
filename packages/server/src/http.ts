@@ -1,17 +1,18 @@
+import type { Collection, WithId } from 'mongodb'
+import type { Spot } from './utils/parseSpot.js'
+
 import { EventEmitter } from 'node:events'
 import process from 'node:process'
-
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { streamSSE } from 'hono/streaming'
-import { MongoClient, type Collection, type WithId, type Document } from 'mongodb'
+import { MongoClient } from 'mongodb'
 import { connect as natsConnect, StringCodec } from 'nats'
-import type { Spot } from './utils/parseSpot.js'
-import { markSpot } from './utils/mark.js'
-import { matchFilter, parseFilterParam, buildMongoQuery } from './utils/filter.js'
 import { getAllDXCCEntities } from './utils/cty.js'
+import { buildMongoQuery, matchFilter, parseFilterParam } from './utils/filter.js'
 import { FREQ_RANGES } from './utils/freq.js'
+import { markSpot } from './utils/mark.js'
 
 const NATS_URL = process.env.NATS_URL || 'nats://localhost:4222'
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017'
@@ -68,7 +69,7 @@ app.get('/sse/spots', async (c) => {
   // 解析过滤器参数
   const filterParam = c.req.query('filter')
   const filter = parseFilterParam(filterParam)
-  
+
   return streamSSE(c, async (stream) => {
     // 立即发送连接确认消息，确保客户端能立刻知道连接已建立，并发送服务器当前UTC时间
     await stream.writeSSE({
@@ -91,7 +92,8 @@ app.get('/sse/spots', async (c) => {
             id: spot._id?.toString(),
           })
         }
-      } catch (err) {
+      }
+      catch (err) {
         console.error('Failed to load history for SSE', err)
       }
     }
@@ -127,7 +129,7 @@ app.get('/api/filter-options', (c) => {
   // 从 FREQ_RANGES 中提取所有唯一的具体频率标记（跳过 HF/VHF/UHF/SHF/LF/WARC）
   const bandTypes = new Set(['HF', 'VHF', 'UHF', 'SHF', 'LF', 'WARC'])
   const specificFreqs = new Set<string>()
-  
+
   for (const range of FREQ_RANGES) {
     const [, , ...marks] = range as [number, number, ...string[]]
     for (const mark of marks) {
@@ -136,17 +138,17 @@ app.get('/api/filter-options', (c) => {
       }
     }
   }
-  
+
   // 获取所有 DXCC 实体
   const dxccEntities = getAllDXCCEntities()
-  
+
   return c.json({
     specificFreqs: Array.from(specificFreqs).sort(),
     dxccEntities: dxccEntities.map(e => ({
       name: e.name,
       primary: e.primary,
-      continent: e.continent
-    }))
+      continent: e.continent,
+    })),
   })
 })
 

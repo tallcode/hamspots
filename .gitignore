@@ -13,7 +13,7 @@ node_modules
 dist
 coverage
 *.local
-.env
+.env*
 
 # Editor directories and files
 .vscode/*
@@ -28,7 +28,6 @@ coverage
 *.sw?
 
 # Environment variables files
-/server/**/.env*
 keys
 
 # Prettier config

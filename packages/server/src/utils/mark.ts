@@ -1,6 +1,6 @@
+import type { Spot } from './parseSpot.js'
 import { BAND_PLAN } from './bandplan.js'
 import { FREQ_RANGES } from './freq.js'
-import type { Spot } from './parseSpot.js'
 
 function freqMark(freq: string) {
   // 频率标记
@@ -52,12 +52,12 @@ function dxMark(dx: string) {
   return marks
 }
 
-const DIGI_REGEX = /\b(?:FT8|FT4|JT65|RTTY|PSK31)\b/i
+const DIGI_REGEX = /\b(?:FT8|FT4|F\/H|JT65|RTTY|PSK31)\b/i
 const CW_REGEX = /\bCW\b/i
 const PH_REGEX = /\b(?:PHONE|SSB|USB|LSB|FM)\b/i
-const PH_RST_REGEX = /\b[4-5]\/?[5-9]\+?\b/
+const PH_RST_REGEX = /\b[45]\/?[5-9]\+?\b/
 const DIGI_RST_REGEX = /\bR?[+-][0-3]?\d(?:db)?\b/i
-const CW_RST_REGEX = /\b[4-5][5-9][5-9]\b/
+const CW_RST_REGEX = /\b[45][5-9][5-9]\b/
 const NOT_CW_COMMENT_REGEX = /\b(?:SS|A)TV\b/i
 
 function modeMark(spot: Spot) {

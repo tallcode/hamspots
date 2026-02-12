@@ -33,7 +33,7 @@ export class DxClusterClient extends EventEmitter {
         lines.forEach((line) => {
           console.log(`[${this.host}] ${line}`)
           const spot = parseSpot(line)
-          if (spot){
+          if (spot) {
             this.emit('spot', spot)
           }
         })
@@ -41,7 +41,7 @@ export class DxClusterClient extends EventEmitter {
     })
 
     // 错误处理与自动重连
-    client.on('error', (err) => console.error(`[${this.host}] Error:`, err.message))
+    client.on('error', err => console.error(`[${this.host}] Error:`, err.message))
     client.on('close', () => {
       console.log(`[${this.host}] Connection closed. Retrying in ${this.reconnectInterval / 1000}s...`)
       setTimeout(() => this.connect(), this.reconnectInterval)

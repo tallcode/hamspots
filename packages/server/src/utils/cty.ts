@@ -159,20 +159,20 @@ export function getDXCC(callsign: string): Entity | null {
  */
 export function getAllDXCCEntities(): Entity[] {
   const uniqueEntities = new Map<string, Entity>()
-  
+
   // 从 exactMap 和 prefixMap 中收集所有唯一的实体（以 primary 为 key 去重）
   for (const entity of exactMap.values()) {
     if (!uniqueEntities.has(entity.primary)) {
       uniqueEntities.set(entity.primary, entity)
     }
   }
-  
+
   for (const entity of prefixMap.values()) {
     if (!uniqueEntities.has(entity.primary)) {
       uniqueEntities.set(entity.primary, entity)
     }
   }
-  
+
   // 转为数组并按名称排序
   return Array.from(uniqueEntities.values()).sort((a, b) => a.name.localeCompare(b.name))
 }
