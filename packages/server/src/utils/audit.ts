@@ -134,6 +134,10 @@ export async function auditCommnet(spot: Spot) {
     console.log(`Comment flagged as inappropriate by badwords-list: "${comment}"`)
     return { hiddenComment: true }
   }
+  // 没有LLM就全部放行了
+  if (!openai) {
+    return { hiddenComment: false }
+  }
   let _comment = comment.replace(/[\r\n]+/g, ' ').trim()
   if (_comment.length < 5) {
     return { hiddenComment: false }
@@ -151,10 +155,6 @@ export async function auditCommnet(spot: Spot) {
     return { hiddenComment: false }
   }
   // 调用 LLM 进行审核
-  if (!openai) {
-    console.warn('OpenAI client not initialized, skipping LLM audit') 
-    return { hiddenComment: false }
-  }
   const { badword, reason } = (await LLMDetect(comment).catch(() => null)) || { badword: false }
   if (badword) {
     console.log(`Comment flagged as inappropriate by LLM: "${comment}"(${reason})`)
@@ -165,11 +165,11 @@ export async function auditCommnet(spot: Spot) {
   return { hiddenComment: badword }
 }
 
-console.log(await auditCommnet({
-  de: 'EA3HPX',
-  freq: '14270.0',
-  dx: 'FY4JIFY',
-  comment: 'too many people w/o brain',
-  time: Date.now(),
-  createdAt: new Date(),
-}))
+// console.log(await auditCommnet({
+//   de: 'EA3HPX',
+//   freq: '14270.0',
+//   dx: 'FY4JIFY',
+//   comment: 'too many people w/o brain',
+//   time: Date.now(),
+//   createdAt: new Date(),
+// }))
