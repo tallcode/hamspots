@@ -1,70 +1,50 @@
 <script setup lang="ts">
+import type { FilterConfig, Spot } from './services/spotService'
 import { useIntervalFn, useMediaQuery, useTimeoutFn } from '@vueuse/core'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import FilterPanel from './components/FilterPanel.vue'
+import { spotService } from './services/spotService'
 import 'dayjs/locale/zh-cn'
 
 dayjs.extend(utc)
 dayjs.locale('zh-cn')
 
-interface Spot {
-  de: string
-  freq: string
-  dx: string
-  comment: string
-  time: number
-  dxcc?: {
-    name: string
-    primary: string
-  }
-  marks?: {
-    freqMarks?: string[]
-    dxMarks?: string[]
-    modeMarks?: string[]
-  }
-  audit?: {
-    hiddenComment: boolean
-  }
-  _id?: string
-  isFlash?: boolean
-}
-
-interface FilterConfig {
-  freqMarks?: {
-    include?: string[]
-    exclude?: string[]
-  }
-  specificFreq?: {
-    include?: string[]
-    exclude?: string[]
-  }
-  dxMarks?: {
-    include?: string[]
-    exclude?: string[]
-  }
-  modeMarks?: {
-    include?: string[]
-    exclude?: string[]
-  }
-  dxcc?: {
-    include?: string[] // 只支持包含
-  }
-}
-
 const MAX_ROWS = 200
 const spots = ref<Spot[]>([])
-const connected = ref(false)
+const connected = computed(() => spotService.state.connected)
 const lastUpdate = ref('尚无数据')
 const enableFlash = ref(false)
-const currentTime = ref(Date.now()) // 校准后的当前时间(服务器时间)
-let timeDiff = 0 // 服务器时间与本地时间的差值(毫秒)
+const currentTime = ref(Date.now())
 
 // 过滤器相关状态
 const filterDialog = ref<HTMLDialogElement | null>(null)
 const currentFilterConfig = ref<FilterConfig>({})
 const isMdAndAbove = useMediaQuery('(min-width: 768px)')
+const MAX_RETRIES = 2
+
+useIntervalFn(() => {
+  currentTime.value = Date.now() + spotService.state.timeDiff
+}, 10 * 1000)
+
+watch(() => spotService.state.statusText, (val) => {
+  if (!spotService.state.connected) {
+    lastUpdate.value = val
+  }
+})
+
+watch(() => spotService.state.connected, (isConnected) => {
+  if (isConnected) {
+    currentTime.value = Date.now() + spotService.state.timeDiff
+    useTimeoutFn(() => {
+      enableFlash.value = true
+    }, 5000)
+  }
+  else {
+    enableFlash.value = false
+  }
+})
 
 // 检查是否有激活的过滤器
 function hasActiveFilter() {
@@ -82,9 +62,7 @@ function closeFilter() {
 }
 
 // 每30秒更新一次校准后的当前时间
-useIntervalFn(() => {
-  currentTime.value = Date.now() + timeDiff
-}, 10 * 1000)
+// Already handled above
 
 function formatTime(ts: number) {
   if (!ts)
@@ -126,6 +104,11 @@ function formatTime(ts: number) {
 }
 
 function addSpot(spot: Spot, flash = true) {
+  // deduplicate
+  if (spot._id && spots.value.some(s => s._id === spot._id)) {
+    return
+  }
+
   if (flash) {
     spot.isFlash = true
     setTimeout(() => {
@@ -159,85 +142,39 @@ function getBadgeClass(type: string, location: 'freq' | 'dx' = 'dx') {
     CW: 'bg-emerald-100 text-emerald-800',
     PH: 'bg-orange-100 text-orange-800',
   }
-  return `${baseClass} ${colorMap[type] || 'bg-blue-100 text-blue-800'}`
+  return `${baseClass} ${type in colorMap ? colorMap[type] : 'bg-blue-100 text-blue-800'}`
 }
 
-let es: EventSource | null = null
+const retryCount = computed(() => spotService.state.retryCount)
 
 // 创建SSE连接
-function connectSSE() {
-  // 关闭现有连接
-  if (es) {
-    es.close()
-    es = null
-  }
-
-  // 清空现有spots
-  spots.value = []
-  connected.value = false
-  enableFlash.value = false
-  lastUpdate.value = ''
-
-  // 构建URL
-  let url = '/sse/spots'
-  const config = currentFilterConfig.value
-  if (Object.keys(config).length > 0) {
-    const encoded = btoa(JSON.stringify(config))
-    url += `?filter=${encodeURIComponent(encoded)}`
-  }
-
-  // 创建新连接
-  es = new EventSource(url)
-
-  es.addEventListener('connected', (evt) => {
-    connected.value = true
-    // 接收服务器时间并计算时间差
-    try {
-      const data = JSON.parse(evt.data)
-      if (data.serverTime) {
-        const clientTime = Date.now()
-        timeDiff = data.serverTime - clientTime
-        console.log('时间校准:', timeDiff, 'ms')
-        // 立即更新校准后的当前时间
-        currentTime.value = Date.now() + timeDiff
-      }
-    }
-    catch (e) {
-      console.warn('Failed to parse server time', e)
-    }
-    // 5秒后激活闪烁功能
-    useTimeoutFn(() => {
-      enableFlash.value = true
-    }, 5000)
-  })
-
-  es.addEventListener('error', () => {
-    connected.value = false
+function connect(keepSpots = false) {
+  if (!keepSpots) {
+    spots.value = []
     enableFlash.value = false
-    lastUpdate.value = '连接已断开'
-    console.error('EventSource error')
+  }
+
+  spotService.setOnMessage((spot) => {
+    addSpot(spot, enableFlash.value)
   })
 
-  es.addEventListener('spot', (evt) => {
-    try {
-      const spot = JSON.parse(evt.data)
-      addSpot(spot, enableFlash.value)
-    }
-    catch (e) {
-      console.error('Invalid spot data', e, evt.data)
-    }
-  })
+  spotService.connect(currentFilterConfig.value, keepSpots)
 }
 
 // 应用过滤器（重新连接SSE）
 function applyFilter(config: FilterConfig) {
   currentFilterConfig.value = config
-  connectSSE()
+  connect(false) // clear spots
   closeFilter()
 }
 
+// 手动重连
+function manualReconnect() {
+  spotService.manualReconnect()
+}
+
 onMounted(() => {
-  connectSSE()
+  connect()
 })
 </script>
 
@@ -269,6 +206,14 @@ onMounted(() => {
             :class="connected ? 'bg-green-600 shadow-[0_0_0_4px_rgba(220,252,231,1)]' : 'bg-gray-400'"
           />
           <span>{{ connected ? '已连接' : '已断开' }}</span>
+          <button
+            v-if="!connected"
+            class="ml-2 text-blue-600 hover:text-blue-800 underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="retryCount > 0 && retryCount < MAX_RETRIES"
+            @click="manualReconnect"
+          >
+            {{ (retryCount > 0 && retryCount < MAX_RETRIES) ? '重连中...' : '重试' }}
+          </button>
         </div>
       </div>
     </header>
